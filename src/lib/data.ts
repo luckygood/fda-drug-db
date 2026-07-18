@@ -332,6 +332,88 @@ export function loadMining(): Promise<MiningData> {
   return miningPromise
 }
 
+// ---- 企业画像数据 ----
+
+export interface CompanyIndexEntry {
+  slug: string
+  name: string
+  name_zh: string | null
+  variants: number
+  applications: number
+  active_products: number
+  nme_count: number
+  first_year: string | null
+  latest_year: string | null
+}
+
+export interface CompanyDetail {
+  slug: string
+  name: string
+  name_zh: string | null
+  variants: string[]
+  stats: {
+    nda: number
+    anda: number
+    bla: number
+    other: number
+    active: number
+    discontinued: number
+    tentative: number
+  }
+  timeline: Record<string, { nda: number; anda: number; bla: number }>
+  nme_list: {
+    application_number: string
+    drug_name: string
+    ap_date: string
+    orphan: number
+    priority: number
+  }[]
+  top_products: {
+    application_number: string
+    drug_name: string
+    active_ingredient: string
+    approval_date: string
+    marketing_status: string
+  }[]
+  diseases: { slug: string; name_zh: string; drug_count: number }[]
+}
+
+let companyIndexPromise: Promise<CompanyIndexEntry[]> | null = null
+const companyShardCache = new Map<string, Promise<CompanyDetail[]>>()
+
+export function loadCompanyIndex(): Promise<CompanyIndexEntry[]> {
+  if (!companyIndexPromise) {
+    companyIndexPromise = fetch(`${import.meta.env.BASE_URL}data/companies/index.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`企业索引加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<{ companies: CompanyIndexEntry[] }>
+      })
+      .then((d) => d.companies)
+  }
+  return companyIndexPromise
+}
+
+export function loadCompanyShard(letter: string): Promise<CompanyDetail[]> {
+  const key = /^[A-Z]$/.test(letter) ? letter : 'OTHER'
+  let p = companyShardCache.get(key)
+  if (!p) {
+    p = fetch(`${import.meta.env.BASE_URL}data/companies/${key}.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`企业分片 ${key} 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<{ companies: CompanyDetail[] }>
+      })
+      .then((d) => d.companies)
+    companyShardCache.set(key, p)
+  }
+  return p
+}
+
+/** 由 slug 首字符定位分片字母 */
+export function companyShardLetter(slug: string): string {
+  const c = (slug[0] || '').toUpperCase()
+  return c >= 'A' && c <= 'Z' ? c : 'OTHER'
+}
+
 // ---- 状态与显示辅助 ----
 
 export type StatusKey = 'rx' | 'otc' | 'discontinued' | 'tentative' | 'other'

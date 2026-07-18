@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { Search, BarChart3, Stethoscope, TrendingUp } from 'lucide-react'
+import { Search, BarChart3, Stethoscope, TrendingUp, Building2 } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
 import DiseasesPage from './pages/DiseasesPage'
 import MiningPage from './pages/MiningPage'
+import CompaniesPage from './pages/CompaniesPage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
 import type { DiseaseIndexEntry } from '@/lib/data'
 
-type Page = 'search' | 'diseases' | 'insights' | 'mining'
+type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies'
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; applicationNumber: string; from: Page }
@@ -24,6 +25,7 @@ export default function App() {
     { key: 'diseases', label: '疾病视角', icon: Stethoscope },
     { key: 'insights', label: '数据洞察', icon: BarChart3 },
     { key: 'mining', label: '深度挖掘', icon: TrendingUp },
+    { key: 'companies', label: '企业画像', icon: Building2 },
   ]
 
   const openDetail = (applicationNumber: string, from: Page) =>
@@ -92,6 +94,8 @@ export default function App() {
           <InsightsPage />
         ) : page === 'mining' ? (
           <MiningPage onSelectDrug={(appNo) => openDetail(appNo, 'mining')} />
+        ) : page === 'companies' ? (
+          <CompaniesPage onSelectDrug={(appNo) => openDetail(appNo, 'companies')} />
         ) : page === 'diseases' ? (
           <DiseasesPage
             pendingDisease={pendingDisease}
