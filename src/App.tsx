@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { Search, BarChart3, Stethoscope, TrendingUp, Building2 } from 'lucide-react'
+import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
 import DiseasesPage from './pages/DiseasesPage'
 import MiningPage from './pages/MiningPage'
 import CompaniesPage from './pages/CompaniesPage'
+import ChinaPage from './pages/ChinaPage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
 
-type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies'
+type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china'
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; applicationNumber: string; from: Page }
@@ -26,6 +27,7 @@ export default function App() {
     { key: 'insights', label: '数据洞察', icon: BarChart3 },
     { key: 'mining', label: '深度挖掘', icon: TrendingUp },
     { key: 'companies', label: '企业画像', icon: Building2 },
+    { key: 'china', label: '出海观察', icon: Ship },
   ]
 
   const openDetail = (applicationNumber: string, from: Page) =>
@@ -104,13 +106,21 @@ export default function App() {
         ) : page === 'insights' ? (
           <InsightsPage />
         ) : page === 'mining' ? (
-          <MiningPage onSelectDrug={(appNo) => openDetail(appNo, 'mining')} />
+          <MiningPage
+            onSelectDrug={(appNo) => openDetail(appNo, 'mining')}
+            onSelectDisease={openDisease}
+          />
         ) : page === 'companies' ? (
           <CompaniesPage
             pendingCompany={pendingCompany}
             onConsumePendingCompany={() => setPendingCompany(null)}
             onSelectDrug={(appNo) => openDetail(appNo, 'companies')}
             onSelectDisease={openDisease}
+          />
+        ) : page === 'china' ? (
+          <ChinaPage
+            onSelectCompany={openCompany}
+            onSelectDrug={(appNo) => openDetail(appNo, 'china')}
           />
         ) : page === 'diseases' ? (
           <DiseasesPage

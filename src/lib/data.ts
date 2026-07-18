@@ -318,6 +318,19 @@ export interface MiningData {
     single_source_examples: { ingredient: string; appl_no: string; approval_date: string }[]
     discontinued_by_year: { yr: string; n: number }[]
   }
+  lifecycle: {
+    top_maintained: {
+      application_number: string
+      drug_name: string
+      sponsor: string
+      first_ap: string
+      last_action: string
+      span_years: number
+      supplements: number
+    }[]
+    span_hist: { bucket: string; n: number }[]
+    median_by_era: { era: string; median_span: number; n: number }[]
+  }
 }
 
 let miningPromise: Promise<MiningData> | null = null
@@ -344,6 +357,76 @@ export function loadAppIndex(): Promise<Record<string, { slug: string; name_zh: 
       })
   }
   return appIndexPromise
+}
+
+// ---- 中国药企出海数据 ----
+
+export interface ChinaPharma {
+  summary: {
+    company_count: number
+    applications: number
+    nda: number
+    anda: number
+    bla: number
+    active_products: number
+    nme_count: number
+    tentative_count: number
+  }
+  timeline: Record<string, { nda: number; anda: number; bla: number }>
+  companies: {
+    slug: string
+    name: string
+    name_zh: string | null
+    applications: number
+    active: number
+    nda: number
+    anda: number
+    bla: number
+    nme_count: number
+    tentative_count: number
+    first_year: string | null
+  }[]
+  innovation: {
+    application_number: string
+    drug_name: string
+    sponsor: string
+    sponsor_zh: string | null
+    ap_date: string
+    orphan: number
+    priority: number
+  }[]
+  pipeline: { ingredient: string; n: number; sponsors: string[] }[]
+}
+
+let chinaPromise: Promise<ChinaPharma> | null = null
+
+export function loadChinaPharma(): Promise<ChinaPharma> {
+  if (!chinaPromise) {
+    chinaPromise = fetch(`${import.meta.env.BASE_URL}data/china_pharma.json`).then((r) => {
+      if (!r.ok) throw new Error(`china_pharma.json 加载失败: HTTP ${r.status}`)
+      return r.json() as Promise<ChinaPharma>
+    })
+  }
+  return chinaPromise
+}
+
+// ---- 疾病相似性网络 ----
+
+export interface DiseaseNetwork {
+  nodes: { slug: string; name_zh: string; area: string; drug_count: number }[]
+  edges: { source: string; target: string; weight: number; shared: number; examples: string[] }[]
+}
+
+let diseaseNetworkPromise: Promise<DiseaseNetwork> | null = null
+
+export function loadDiseaseNetwork(): Promise<DiseaseNetwork> {
+  if (!diseaseNetworkPromise) {
+    diseaseNetworkPromise = fetch(`${import.meta.env.BASE_URL}data/disease_network.json`).then((r) => {
+      if (!r.ok) throw new Error(`disease_network.json 加载失败: HTTP ${r.status}`)
+      return r.json() as Promise<DiseaseNetwork>
+    })
+  }
+  return diseaseNetworkPromise
 }
 
 // ---- 企业画像数据 ----

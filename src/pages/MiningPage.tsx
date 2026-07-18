@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Loader2, Flame, Crosshair, Award, Pill, AlertTriangle, Table2, ScatterChart,
+  Share2, Hourglass,
 } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
-import { loadMining, type MiningData } from '@/lib/data'
+import { loadMining, loadDiseaseNetwork, type MiningData, type DiseaseNetwork } from '@/lib/data'
 
 const COLORS = {
   blue: '#2563eb',
@@ -51,15 +52,26 @@ function SectionNote({ children }: { children: React.ReactNode }) {
 const thCls = 'px-3 py-2 text-left text-xs font-medium text-slate-500'
 const tdCls = 'px-3 py-2 text-sm text-slate-700'
 
-export default function MiningPage({ onSelectDrug }: { onSelectDrug: (applicationNumber: string) => void }) {
+export default function MiningPage({
+  onSelectDrug,
+  onSelectDisease,
+}: {
+  onSelectDrug: (applicationNumber: string) => void
+  /** 点击网络图疾病节点跳转疾病视角页 */
+  onSelectDisease?: (slug: string) => void
+}) {
   const [data, setData] = useState<MiningData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [heatTable, setHeatTable] = useState(false)
+  const [network, setNetwork] = useState<DiseaseNetwork | null>(null)
 
   useEffect(() => {
     loadMining()
       .then(setData)
       .catch((e: Error) => setError(e.message))
+    loadDiseaseNetwork()
+      .then(setNetwork)
+      .catch(() => setNetwork(null))
   }, [])
 
   // ---- 1. 治疗领域创新热度：气泡散点 ----
@@ -222,6 +234,105 @@ export default function MiningPage({ onSelectDrug }: { onSelectDrug: (applicatio
     }
   }, [data])
 
+  // ---- 5. 疾病相似性网络 ----
+  const netAreas = useMemo(
+    () => (network ? [...new Set(network.nodes.map((n) => n.area))].sort() : []),
+    [network],
+  )
+
+  const networkOption = useMemo((): EChartsOption | null => {
+    if (!network) return null
+    return {
+      color: COLORS.palette,
+      tooltip: {
+        formatter: (p) => {
+          const cp = p as { dataType: string; data: { name?: string; source?: string; target?: string; weight?: number; shared?: number; examples?: string[]; drug_count?: number; area?: string } }
+          if (cp.dataType === 'edge') {
+            const d = cp.data
+            return `${d.source} ↔ ${d.target}<br/>相似度（Jaccard）：${d.weight}<br/>共享药物：${d.shared} 个<br/>示例：${(d.examples ?? []).join('、')}`
+          }
+          const d = cp.data
+          return `${d.name}<br/>治疗领域：${d.area}<br/>覆盖药物：${d.drug_count} 个<br/><span style="color:#94a3b8">点击跳转疾病页</span>`
+        },
+      },
+      legend: { data: netAreas, top: 0, textStyle: { color: '#475569', fontSize: 11 } },
+      series: [{
+        type: 'graph',
+        layout: 'force',
+        top: 40,
+        roam: true,
+        draggable: true,
+        categories: netAreas.map((a) => ({ name: a })),
+        force: { repulsion: 260, edgeLength: [40, 140], gravity: 0.08 },
+        label: { show: true, fontSize: 10, color: '#334155' },
+        lineStyle: { color: 'source', opacity: 0.35 },
+        emphasis: { focus: 'adjacency', lineStyle: { opacity: 0.8 } },
+        data: network.nodes.map((n) => ({
+          name: n.slug,
+          value: n.drug_count,
+          slug: n.slug,
+          area: n.area,
+          drug_count: n.drug_count,
+          category: netAreas.indexOf(n.area),
+          symbolSize: Math.max(10, Math.min(46, Math.sqrt(n.drug_count) * 2.4)),
+          label: { show: n.drug_count >= 60 },
+        })),
+        links: network.edges.map((e) => ({
+          source: e.source,
+          target: e.target,
+          weight: e.weight,
+          shared: e.shared,
+          examples: e.examples,
+          lineStyle: { width: Math.max(0.6, e.weight * 4) },
+        })),
+      }],
+    }
+  }, [network, netAreas])
+
+  const networkEvents = useMemo(
+    () => ({
+      click: (p: unknown) => {
+        const cp = p as { dataType?: string; data?: { slug?: string } }
+        if (cp.dataType === 'node' && cp.data?.slug) onSelectDisease?.(cp.data.slug)
+      },
+    }),
+    [onSelectDisease],
+  )
+
+  // ---- 6. 注册生命周期 ----
+  const histOption = useMemo((): EChartsOption | null => {
+    if (!data) return null
+    const h = data.lifecycle.span_hist
+    return {
+      color: [COLORS.blue],
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: 50, right: 20, top: 30, bottom: 30 },
+      xAxis: { type: 'category', data: h.map((r) => r.bucket), name: '维护跨度（年）', ...BASE_AXIS },
+      yAxis: { type: 'value', name: '申请数', ...BASE_AXIS },
+      series: [{ type: 'bar', data: h.map((r) => r.n), barWidth: 22, itemStyle: { borderRadius: [3, 3, 0, 0] } }],
+    }
+  }, [data])
+
+  const eraOption = useMemo((): EChartsOption | null => {
+    if (!data) return null
+    const e = data.lifecycle.median_by_era.filter((r) => r.era >= '1970')
+    return {
+      color: [COLORS.amber],
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params) => {
+          const items = params as { dataIndex: number }[]
+          const r = e[items[0].dataIndex]
+          return `${r.era} 年获批<br/>中位维护跨度：${r.median_span} 年<br/>样本：${r.n.toLocaleString()} 个申请`
+        },
+      },
+      grid: { left: 50, right: 20, top: 30, bottom: 30 },
+      xAxis: { type: 'category', data: e.map((r) => r.era), ...BASE_AXIS },
+      yAxis: { type: 'value', name: '中位跨度（年）', ...BASE_AXIS },
+      series: [{ type: 'line', smooth: true, data: e.map((r) => r.median_span), symbolSize: 6, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.1 } }],
+    }
+  }, [data])
+
   if (error) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -297,7 +408,31 @@ export default function MiningPage({ onSelectDrug }: { onSelectDrug: (applicatio
         </CardContent>
       </Card>
 
-      {/* ===== 2. 广谱药物 ===== */}
+      {/* ===== 2. 疾病相似性网络 ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Share2 className="h-5 w-5 text-blue-600" />
+            疾病相似性网络（{network ? `${network.nodes.length} 节点 · ${network.edges.length} 边` : '加载中'}）
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {networkOption ? (
+            <EChart option={networkOption} height={560} onEvents={networkEvents} />
+          ) : (
+            <div className="flex h-[560px] items-center justify-center text-slate-400">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin text-blue-600" />
+              正在加载网络数据…
+            </div>
+          )}
+          <SectionNote>
+            口径：两疾病的相似度 = 共享药物集合的 Jaccard 系数（按药名+成分去重，≥0.15 或每节点 Top 3 强边保留）；
+            节点大小 = 覆盖药物数，边宽 = 相似度；可拖拽/缩放，悬停边查看共享药名，点击节点跳转疾病页。
+          </SectionNote>
+        </CardContent>
+      </Card>
+
+      {/* ===== 3. 广谱药物 ===== */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -522,6 +657,68 @@ export default function MiningPage({ onSelectDrug }: { onSelectDrug: (applicatio
           <SectionNote>
             口径：在售 = 营销状态为处方药或 OTC 的产品；按成分聚合后仅含 1 个申请号的计为单一来源（同一持证商的多个申请不重复计）。
             退市数按 FDA 记录的撤市日期分年统计。
+          </SectionNote>
+        </CardContent>
+      </Card>
+
+      {/* ===== 注册生命周期曲线 ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Hourglass className="h-5 w-5 text-blue-600" />
+            注册生命周期曲线
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {histOption && (
+              <div>
+                <p className="mb-1 text-sm font-medium text-slate-600">维护跨度分布（5 年桶）</p>
+                <EChart option={histOption} height={280} />
+              </div>
+            )}
+            {eraOption && (
+              <div>
+                <p className="mb-1 text-sm font-medium text-slate-600">各获批年代的中位维护跨度</p>
+                <EChart option={eraOption} height={280} />
+              </div>
+            )}
+          </div>
+          <div className="mt-4 max-h-[420px] overflow-auto rounded-md border border-slate-100">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 bg-slate-50">
+                <tr>
+                  <th className={thCls}>#</th>
+                  <th className={thCls}>药物</th>
+                  <th className={thCls}>持证商</th>
+                  <th className={`${thCls} text-right`}>首次获批</th>
+                  <th className={`${thCls} text-right`}>最近获批活动</th>
+                  <th className={`${thCls} text-right`}>跨度（年）</th>
+                  <th className={`${thCls} text-right`}>获批补充</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.lifecycle.top_maintained.map((t, i) => (
+                  <tr
+                    key={t.application_number}
+                    onClick={() => onSelectDrug(t.application_number)}
+                    className="cursor-pointer border-t border-slate-100 hover:bg-blue-50/50"
+                  >
+                    <td className={`${tdCls} text-slate-400`}>{i + 1}</td>
+                    <td className={`${tdCls} max-w-[200px] truncate font-medium text-blue-700`}>{t.drug_name}</td>
+                    <td className={`${tdCls} max-w-[160px] truncate text-slate-500`}>{t.sponsor}</td>
+                    <td className={`${tdCls} text-right whitespace-nowrap`}>{t.first_ap}</td>
+                    <td className={`${tdCls} text-right whitespace-nowrap`}>{t.last_action}</td>
+                    <td className={`${tdCls} text-right`}>{t.span_years}</td>
+                    <td className={`${tdCls} text-right font-semibold text-blue-700`}>{t.supplements}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <SectionNote>
+            口径：首次获批 = 申请首个获批日期；最近获批活动 = 该申请所有 AP 状态提交的最晚日期；获批补充 = SUPPL+AP 提交次数，
+            反映企业的持续注册投入（榜单按补充次数排序）。跨度为月份差折算年数。点击行查看药品详情。
           </SectionNote>
         </CardContent>
       </Card>
