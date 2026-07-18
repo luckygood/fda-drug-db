@@ -93,6 +93,48 @@ export function loadDetails(): Promise<Map<string, AppDetail>> {
   return detailsPromise
 }
 
+// ---- 洞察页统计数据 ----
+
+export interface Stats {
+  yearly_by_type: {
+    years: string[]
+    NDA: number[]
+    ANDA: number[]
+    BLA: number[]
+    incomplete_year: string
+  }
+  nme_by_year: { years: string[]; counts: number[] }
+  priority_by_year: {
+    years: string[]
+    total: number[]
+    priority: number[]
+    ratio: number[]
+  }
+  top_sponsors: { names: string[]; counts: number[] }
+  top_ingredients: { names: string[]; counts: number[] }
+  dosage_forms: { names: string[]; counts: number[] }
+  headline: {
+    total_applications: number
+    active_products: number
+    discontinued_products: number
+    tentative_applications: number
+    nme_2025: number
+    total_sponsors: number
+  }
+}
+
+let statsPromise: Promise<Stats> | null = null
+
+export function loadStats(): Promise<Stats> {
+  if (!statsPromise) {
+    statsPromise = fetch(`${import.meta.env.BASE_URL}data/stats.json`).then((r) => {
+      if (!r.ok) throw new Error(`stats.json 加载失败: HTTP ${r.status}`)
+      return r.json() as Promise<Stats>
+    })
+  }
+  return statsPromise
+}
+
 // ---- 状态与显示辅助 ----
 
 export type StatusKey = 'rx' | 'otc' | 'discontinued' | 'tentative' | 'other'

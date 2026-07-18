@@ -1,17 +1,27 @@
 import { useState } from 'react'
+import { Search, BarChart3 } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
+import InsightsPage from './pages/InsightsPage'
+import { cn } from '@/lib/utils'
 
-type View = { kind: 'search' } | { kind: 'detail'; applicationNumber: string }
+type Page = 'search' | 'insights'
+type View = { kind: 'list' } | { kind: 'detail'; applicationNumber: string }
 
 export default function App() {
-  const [view, setView] = useState<View>({ kind: 'search' })
+  const [page, setPage] = useState<Page>('search')
+  const [view, setView] = useState<View>({ kind: 'list' })
+
+  const tabs: { key: Page; label: string; icon: typeof Search }[] = [
+    { key: 'search', label: '药品查询', icon: Search },
+    { key: 'insights', label: '数据洞察', icon: BarChart3 },
+  ]
 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航 */}
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-5">
+        <div className="mx-auto max-w-7xl px-4 pt-5">
           <h1 className="text-xl font-bold text-slate-900">
             <span className="mr-2 text-blue-600">✚</span>
             FDA 获批药品数据库
@@ -19,21 +29,44 @@ export default function App() {
           <p className="mt-1 text-sm text-slate-500">
             数据来源：Drugs@FDA（美国食品药品监督管理局）· 数据截至 2026-07-16
           </p>
+          {/* 页面切换标签 */}
+          <nav className="mt-4 flex gap-1">
+            {tabs.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => {
+                  setPage(key)
+                  if (key !== 'search') setView({ kind: 'list' })
+                }}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-t-lg border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                  page === key
+                    ? 'border-blue-600 bg-blue-50/60 text-blue-700'
+                    : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
       </header>
 
       {/* 主内容 */}
       <main className="mx-auto max-w-7xl px-4 py-6">
-        {view.kind === 'search' ? (
+        {page === 'insights' ? (
+          <InsightsPage />
+        ) : view.kind === 'detail' ? (
+          <DetailPage
+            applicationNumber={view.applicationNumber}
+            onBack={() => setView({ kind: 'list' })}
+          />
+        ) : (
           <SearchPage
             onSelect={(applicationNumber) =>
               setView({ kind: 'detail', applicationNumber })
             }
-          />
-        ) : (
-          <DetailPage
-            applicationNumber={view.applicationNumber}
-            onBack={() => setView({ kind: 'search' })}
           />
         )}
       </main>
