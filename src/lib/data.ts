@@ -149,6 +149,18 @@ export interface DiseaseIndexEntry {
   boxed_count: number
 }
 
+export interface EfficacyCard {
+  trials: string[]
+  key_results: string[]
+  source_section: string
+}
+
+export interface SafetyCard {
+  boxed_warning: string | null
+  warnings: string[]
+  common_adverse_reactions: string | null
+}
+
 export interface DiseaseDrug {
   application_number: string
   drug_name: string
@@ -159,6 +171,8 @@ export interface DiseaseDrug {
   marketing_status: string
   has_boxed_warning: boolean
   efficacy_snippet: string
+  efficacy_card: EfficacyCard | null
+  safety_card: SafetyCard | null
 }
 
 export interface DiseaseDetail {
@@ -168,6 +182,7 @@ export interface DiseaseDetail {
   synonyms: string[]
   area: string
   approvals_by_year: Record<string, number>
+  cards_truncated?: boolean
   drugs: DiseaseDrug[]
 }
 
