@@ -277,6 +277,61 @@ export async function getAppCard(applicationNumber: string): Promise<AppCard | n
   return null
 }
 
+// ---- 深度挖掘数据 ----
+
+export interface MiningData {
+  disease_heatmap: {
+    slug: string
+    name_zh: string
+    area: string
+    drug_count: number
+    recent5: number
+    boxed_pct: number
+  }[]
+  broad_spectrum: {
+    application_number: string
+    drug_name: string
+    active_ingredient: string
+    disease_count: number
+    sample_diseases: string[]
+  }[]
+  nme: {
+    yearly: { yr: string; nda: number; bla: number; orphan_pct: number; pri_pct: number }[]
+    top_companies: { sponsor: string; n: number }[]
+    latest: {
+      application_number: string
+      drug_name: string
+      sponsor: string
+      ap_date: string
+      orphan: number
+      priority: number
+    }[]
+  }
+  generic_cliff: {
+    stats: { nme_total: number; with_anda: number; avg_lag_years: number }
+    top_genericized: { drug: string; nme_yr: number; anda_yr: number; lag: number; anda_n: number }[]
+    tentative_top: { ingredient: string; n: number }[]
+    tentative_total_appls: number
+  }
+  supply_risk: {
+    single_source_count: number
+    single_source_examples: { ingredient: string; appl_no: string; approval_date: string }[]
+    discontinued_by_year: { yr: string; n: number }[]
+  }
+}
+
+let miningPromise: Promise<MiningData> | null = null
+
+export function loadMining(): Promise<MiningData> {
+  if (!miningPromise) {
+    miningPromise = fetch(`${import.meta.env.BASE_URL}data/mining.json`).then((r) => {
+      if (!r.ok) throw new Error(`mining.json 加载失败: HTTP ${r.status}`)
+      return r.json() as Promise<MiningData>
+    })
+  }
+  return miningPromise
+}
+
 // ---- 状态与显示辅助 ----
 
 export type StatusKey = 'rx' | 'otc' | 'discontinued' | 'tentative' | 'other'
