@@ -18,18 +18,22 @@ import { StatusBadge, TypeBadge } from '@/components/StatusBadge'
 import {
   loadDisease,
   loadDiseaseIndex,
+  loadSponsorMap,
+  resolveCompanySlug,
   type DiseaseDetail,
   type DiseaseIndexEntry,
 } from '@/lib/data'
 
 interface DiseasesPageProps {
   onSelectDrug: (applicationNumber: string) => void
-  /** 全局搜索选中的疾病，待本页消费 */
-  pendingDisease?: DiseaseIndexEntry | null
+  /** 跨页传入的疾病 slug（全局搜索 / 企业画像疾病 chips），待本页消费 */
+  pendingDisease?: string | null
   onConsumePending?: () => void
+  /** 点击药物行持证商跳转企业画像 */
+  onSelectCompany?: (slug: string) => void
 }
 
-export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePending }: DiseasesPageProps) {
+export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePending, onSelectCompany }: DiseasesPageProps) {
   const [index, setIndex] = useState<DiseaseIndexEntry[] | null>(null)
   const [areas, setAreas] = useState<string[]>([])
   const [indexError, setIndexError] = useState<string | null>(null)
@@ -39,7 +43,14 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
   const [detail, setDetail] = useState<DiseaseDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    loadSponsorMap()
+      .then(setSponsorMap)
+      .catch(() => setSponsorMap(null))
+  }, [])
 
   useEffect(() => {
     loadDiseaseIndex()
@@ -88,10 +99,11 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
       .finally(() => setDetailLoading(false))
   }
 
-  // 消费全局搜索传来的疾病选择（需等疾病索引加载完成）
+  // 消费跨页传来的疾病选择（需等疾病索引加载完成，按 slug 定位）
   useEffect(() => {
     if (pendingDisease && index) {
-      selectDisease(pendingDisease)
+      const entry = index.find((d) => d.slug === pendingDisease)
+      if (entry) selectDisease(entry)
       onConsumePending?.()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -321,7 +333,23 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
                             {d.active_ingredient || '—'}
                           </TableCell>
                           <TableCell className="max-w-40 truncate text-slate-600">
-                            {d.sponsor_name || '—'}
+                            {(() => {
+                              const slug = sponsorMap ? resolveCompanySlug(sponsorMap, d.sponsor_name) : null
+                              return slug && onSelectCompany ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onSelectCompany(slug)
+                                  }}
+                                  title="查看企业画像"
+                                  className="max-w-full truncate text-left text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
+                                >
+                                  {d.sponsor_name || '—'}
+                                </button>
+                              ) : (
+                                d.sponsor_name || '—'
+                              )
+                            })()}
                           </TableCell>
                           <TableCell>
                             <TypeBadge type={d.appl_type} />

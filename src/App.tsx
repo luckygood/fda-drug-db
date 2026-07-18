@@ -8,7 +8,6 @@ import MiningPage from './pages/MiningPage'
 import CompaniesPage from './pages/CompaniesPage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
-import type { DiseaseIndexEntry } from '@/lib/data'
 
 type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies'
 type View =
@@ -18,7 +17,8 @@ type View =
 export default function App() {
   const [page, setPage] = useState<Page>('search')
   const [view, setView] = useState<View>({ kind: 'list' })
-  const [pendingDisease, setPendingDisease] = useState<DiseaseIndexEntry | null>(null)
+  const [pendingDisease, setPendingDisease] = useState<string | null>(null)
+  const [pendingCompany, setPendingCompany] = useState<string | null>(null)
 
   const tabs: { key: Page; label: string; icon: typeof Search }[] = [
     { key: 'search', label: '药品查询', icon: Search },
@@ -30,6 +30,18 @@ export default function App() {
 
   const openDetail = (applicationNumber: string, from: Page) =>
     setView({ kind: 'detail', applicationNumber, from })
+
+  const openDisease = (slug: string) => {
+    setPendingDisease(slug)
+    setPage('diseases')
+    setView({ kind: 'list' })
+  }
+
+  const openCompany = (slug: string) => {
+    setPendingCompany(slug)
+    setPage('companies')
+    setView({ kind: 'list' })
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -46,14 +58,11 @@ export default function App() {
                 数据来源：Drugs@FDA + openFDA 药品说明书 · 数据截至 2026-07-16
               </p>
             </div>
-            {/* 全局统一搜索框（药物/疾病一站式） */}
+            {/* 全局统一搜索框（药物/疾病/企业一站式） */}
             <GlobalSearch
-              onSelectDisease={(entry) => {
-                setPendingDisease(entry)
-                setPage('diseases')
-                setView({ kind: 'list' })
-              }}
+              onSelectDisease={(entry) => openDisease(entry.slug)}
               onSelectDrug={(appNo) => openDetail(appNo, page)}
+              onSelectCompany={(entry) => openCompany(entry.slug)}
             />
           </div>
           {/* 页面切换标签 */}
@@ -89,18 +98,25 @@ export default function App() {
               setPage(view.from)
               setView({ kind: 'list' })
             }}
+            onSelectCompany={openCompany}
           />
         ) : page === 'insights' ? (
           <InsightsPage />
         ) : page === 'mining' ? (
           <MiningPage onSelectDrug={(appNo) => openDetail(appNo, 'mining')} />
         ) : page === 'companies' ? (
-          <CompaniesPage onSelectDrug={(appNo) => openDetail(appNo, 'companies')} />
+          <CompaniesPage
+            pendingCompany={pendingCompany}
+            onConsumePendingCompany={() => setPendingCompany(null)}
+            onSelectDrug={(appNo) => openDetail(appNo, 'companies')}
+            onSelectDisease={openDisease}
+          />
         ) : page === 'diseases' ? (
           <DiseasesPage
             pendingDisease={pendingDisease}
             onConsumePending={() => setPendingDisease(null)}
             onSelectDrug={(appNo) => openDetail(appNo, 'diseases')}
+            onSelectCompany={openCompany}
           />
         ) : (
           <SearchPage onSelect={(appNo) => openDetail(appNo, 'search')} />

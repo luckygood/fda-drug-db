@@ -15,6 +15,8 @@ import {
   getAppCard,
   loadDetails,
   loadProducts,
+  loadSponsorMap,
+  resolveCompanySlug,
   type AppCard,
   type AppDetail,
   type Product,
@@ -25,6 +27,8 @@ import DrugSummaryCards from '@/components/DrugSummaryCards'
 interface DetailPageProps {
   applicationNumber: string
   onBack: () => void
+  /** 点击持证商跳转企业画像（slug 由 sponsor_map 解析） */
+  onSelectCompany?: (slug: string) => void
 }
 
 const STATUS_TEXT: Record<string, string> = {
@@ -37,12 +41,19 @@ function highlightClass(submissionClass: string | null): boolean {
   return c.startsWith('TYPE 1') || c.startsWith('TYPE 4')
 }
 
-export default function DetailPage({ applicationNumber, onBack }: DetailPageProps) {
+export default function DetailPage({ applicationNumber, onBack, onSelectCompany }: DetailPageProps) {
   const [products, setProducts] = useState<Product[] | null>(null)
   const [detail, setDetail] = useState<AppDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [appCard, setAppCard] = useState<AppCard | null>(null)
   const [cardLoading, setCardLoading] = useState(true)
+  const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
+
+  useEffect(() => {
+    loadSponsorMap()
+      .then(setSponsorMap)
+      .catch(() => setSponsorMap(null))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -92,6 +103,7 @@ export default function DetailPage({ applicationNumber, onBack }: DetailPageProp
   }, [products])
 
   const head = products?.[0]
+  const companySlug = sponsorMap ? resolveCompanySlug(sponsorMap, head?.sponsor_name) : null
 
   if (error) {
     return (
@@ -136,7 +148,17 @@ export default function DetailPage({ applicationNumber, onBack }: DetailPageProp
         <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="text-slate-400">持证商</p>
-            <p className="mt-0.5 font-medium text-slate-800">{head?.sponsor_name || '—'}</p>
+            {companySlug && onSelectCompany ? (
+              <button
+                onClick={() => onSelectCompany(companySlug)}
+                title="查看企业画像"
+                className="mt-0.5 font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
+              >
+                {head?.sponsor_name || '—'}
+              </button>
+            ) : (
+              <p className="mt-0.5 font-medium text-slate-800">{head?.sponsor_name || '—'}</p>
+            )}
           </div>
           <div>
             <p className="text-slate-400">活性成分</p>

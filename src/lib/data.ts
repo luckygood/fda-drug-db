@@ -408,6 +408,48 @@ export function loadCompanyShard(letter: string): Promise<CompanyDetail[]> {
   return p
 }
 
+let sponsorMapPromise: Promise<Record<string, string>> | null = null
+
+/** 原始 sponsor 名（大写）→ 企业 slug；含归一名回退键 */
+export function loadSponsorMap(): Promise<Record<string, string>> {
+  if (!sponsorMapPromise) {
+    sponsorMapPromise = fetch(`${import.meta.env.BASE_URL}data/companies/sponsor_map.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`sponsor_map.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<Record<string, string>>
+      })
+  }
+  return sponsorMapPromise
+}
+
+const COMPANY_SUFFIXES = new Set([
+  'LTD', 'LIMITED', 'INC', 'LLC', 'CORP', 'CORPORATION', 'COMPANY', 'CO',
+  'USA', 'US', 'PHARMS', 'GMBH', 'AG', 'SA', 'BV', 'SRL', 'SPA', 'PLC',
+  'APS', 'AS', 'KK', 'LP', 'LLP', 'NV', 'PTY', 'PTE', 'SAS', 'SARL',
+])
+
+/** 与导出脚本一致的企业名归一化（用于 sponsor_map 回退查找） */
+export function normalizeSponsor(name: string): string {
+  const s = name.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim()
+  if (!s) return ''
+  const toks = s.split(' ')
+  while (toks.length && COMPANY_SUFFIXES.has(toks[toks.length - 1])) toks.pop()
+  while (toks.length && toks[toks.length - 1] === 'AND') toks.pop()
+  return toks.join(' ')
+}
+
+/** 原始 sponsor 名 → 企业 slug（先精确命中，再归一化回退） */
+export function resolveCompanySlug(
+  map: Record<string, string>,
+  sponsorName: string | null | undefined,
+): string | null {
+  if (!sponsorName) return null
+  const raw = sponsorName.trim().toUpperCase()
+  if (map[raw]) return map[raw]
+  const norm = normalizeSponsor(raw)
+  return norm ? (map[norm] ?? null) : null
+}
+
 /** 由 slug 首字符定位分片字母 */
 export function companyShardLetter(slug: string): string {
   const c = (slug[0] || '').toUpperCase()

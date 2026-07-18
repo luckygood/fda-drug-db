@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Loader2, Pill, Stethoscope } from 'lucide-react'
+import { Search, Loader2, Pill, Stethoscope, Building2 } from 'lucide-react'
 import {
+  loadCompanyIndex,
   loadDiseaseIndex,
   loadProducts,
+  loadSponsorMap,
+  type CompanyIndexEntry,
   type DiseaseIndexEntry,
   type Product,
 } from '@/lib/data'
@@ -10,15 +13,18 @@ import {
 interface GlobalSearchProps {
   onSelectDisease: (entry: DiseaseIndexEntry) => void
   onSelectDrug: (applicationNumber: string) => void
+  onSelectCompany: (entry: CompanyIndexEntry) => void
 }
 
 type Suggestion =
   | { kind: 'disease'; entry: DiseaseIndexEntry }
+  | { kind: 'company'; entry: CompanyIndexEntry }
   | { kind: 'drug'; product: Product }
 
 const MAX_PER_GROUP = 8
+const MAX_COMPANY = 5
 
-export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSearchProps) {
+export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCompany }: GlobalSearchProps) {
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [open, setOpen] = useState(false)
@@ -26,10 +32,13 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSe
   const [diseases, setDiseases] = useState<DiseaseIndexEntry[] | null>(null)
   const [products, setProducts] = useState<Product[] | null>(null)
   const [productsLoading, setProductsLoading] = useState(false)
+  const [companies, setCompanies] = useState<CompanyIndexEntry[] | null>(null)
+  const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
+  const [companiesLoading, setCompaniesLoading] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  // 疾病索引立即加载（体积小）；药品数据聚焦时按需加载
+  // 疾病索引立即加载（体积小）；药品/企业数据聚焦时按需加载
   useEffect(() => {
     loadDiseaseIndex()
       .then((d) => setDiseases(d.diseases))
@@ -43,6 +52,18 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSe
       .then(setProducts)
       .catch(() => setProducts([]))
       .finally(() => setProductsLoading(false))
+  }
+
+  const ensureCompanies = () => {
+    if (companies || companiesLoading) return
+    setCompaniesLoading(true)
+    Promise.all([loadCompanyIndex(), loadSponsorMap()])
+      .then(([idx, map]) => {
+        setCompanies(idx)
+        setSponsorMap(map)
+      })
+      .catch(() => setCompanies([]))
+      .finally(() => setCompaniesLoading(false))
   }
 
   // debounce ~200ms
@@ -102,12 +123,37 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSe
     return out
   }, [products, debounced])
 
-  // 拍平成可选列表（疾病在前，药品在后）
+  const companyMatches = useMemo((): CompanyIndexEntry[] => {
+    if (!companies || !debounced || debounced.length < 2) return []
+    const q = debounced.toUpperCase()
+    const raw = debounced
+    const hits = new Map<string, CompanyIndexEntry>()
+    // 归一名 / 中文别名
+    for (const c of companies) {
+      if (c.name.includes(q) || (c.name_zh && c.name_zh.includes(raw))) {
+        hits.set(c.slug, c)
+        if (hits.size >= MAX_COMPANY) break
+      }
+    }
+    // 变体名（原始 sponsor 名）
+    if (sponsorMap && hits.size < MAX_COMPANY) {
+      for (const [variant, slug] of Object.entries(sponsorMap)) {
+        if (hits.size >= MAX_COMPANY) break
+        if (hits.has(slug) || !variant.includes(q)) continue
+        const c = companies.find((x) => x.slug === slug)
+        if (c) hits.set(slug, c)
+      }
+    }
+    return [...hits.values()].slice(0, MAX_COMPANY)
+  }, [companies, sponsorMap, debounced])
+
+  // 拍平成可选列表（疾病 → 企业 → 药品）
   const suggestions = useMemo((): Suggestion[] => {
     const list: Suggestion[] = diseaseMatches.map((entry) => ({ kind: 'disease', entry }))
+    for (const entry of companyMatches) list.push({ kind: 'company', entry })
     for (const product of drugMatches) list.push({ kind: 'drug', product })
     return list
-  }, [diseaseMatches, drugMatches])
+  }, [diseaseMatches, companyMatches, drugMatches])
 
   useEffect(() => {
     setActive(-1)
@@ -124,6 +170,7 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSe
     setOpen(false)
     setQuery('')
     if (s.kind === 'disease') onSelectDisease(s.entry)
+    else if (s.kind === 'company') onSelectCompany(s.entry)
     else onSelectDrug(s.product.application_number)
   }
 
@@ -162,9 +209,10 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSe
           onFocus={() => {
             setOpen(true)
             ensureProducts()
+            ensureCompanies()
           }}
           onKeyDown={onKeyDown}
-          placeholder="全局搜索：疾病 / 药品 / 成分…"
+          placeholder="全局搜索：疾病 / 药品 / 企业…"
           className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
         />
       </div>
@@ -194,6 +242,41 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSe
               </div>
             )}
 
+            {/* 企业组 */}
+            {(companyMatches.length > 0 || (companiesLoading && debounced.length >= 2)) && (
+              <div>
+                <p className="bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-400">企业</p>
+                {companiesLoading && companyMatches.length === 0 && (
+                  <p className="flex items-center gap-2 px-3 py-3 text-sm text-slate-400">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                    正在加载企业数据…
+                  </p>
+                )}
+                {companyMatches.map((c, i) => {
+                  const idx = diseaseMatches.length + i
+                  return (
+                    <button
+                      key={`c-${c.slug}`}
+                      onClick={() => choose({ kind: 'company', entry: c })}
+                      onMouseEnter={() => setActive(idx)}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                        active === idx ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <Building2 className="h-4 w-4 shrink-0 text-violet-600" />
+                      <span className="truncate font-medium text-slate-800">{c.name}</span>
+                      {c.name_zh && (
+                        <span className="shrink-0 text-xs text-slate-500">{c.name_zh}</span>
+                      )}
+                      <span className="ml-auto shrink-0 text-xs text-slate-400">
+                        在售 {c.active_products}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
             {/* 药品组 */}
             {(drugMatches.length > 0 || productsLoading) && (
               <div>
@@ -205,7 +288,7 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSe
                   </p>
                 )}
                 {drugMatches.map((p, i) => {
-                  const idx = diseaseMatches.length + i
+                  const idx = diseaseMatches.length + companyMatches.length + i
                   return (
                     <button
                       key={`p-${p.application_number}`}
@@ -228,9 +311,9 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug }: GlobalSe
             )}
 
             {/* 空结果 */}
-            {diseaseMatches.length === 0 && drugMatches.length === 0 && !productsLoading && (
+            {diseaseMatches.length === 0 && companyMatches.length === 0 && drugMatches.length === 0 && !productsLoading && !companiesLoading && (
               <p className="px-3 py-4 text-center text-sm text-slate-400">
-                未找到匹配的疾病或药品
+                未找到匹配的疾病、药品或企业
               </p>
             )}
           </div>

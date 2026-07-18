@@ -55,7 +55,19 @@ function compositionLine(d: CompanyDetail): string {
   return `以成熟产品为主（ANDA 占 ${andaPct}%）`
 }
 
-export default function CompaniesPage({ onSelectDrug }: { onSelectDrug: (applicationNumber: string) => void }) {
+export default function CompaniesPage({
+  onSelectDrug,
+  onSelectDisease,
+  pendingCompany,
+  onConsumePendingCompany,
+}: {
+  onSelectDrug: (applicationNumber: string) => void
+  /** 点击疾病 chip 跳转疾病视角页 */
+  onSelectDisease?: (slug: string) => void
+  /** 跨页传入的企业 slug（全局搜索 / 详情页 / 疾病页持证商），待本页消费 */
+  pendingCompany?: string | null
+  onConsumePendingCompany?: () => void
+}) {
   const [index, setIndex] = useState<CompanyIndexEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -90,6 +102,16 @@ export default function CompaniesPage({ onSelectDrug }: { onSelectDrug: (applica
   }, [index, query])
 
   const hotCompanies = useMemo(() => (index ? index.slice(0, 12) : []), [index])
+
+  // 消费跨页传入的企业选择（需等企业索引加载完成，按 slug 定位）
+  useEffect(() => {
+    if (pendingCompany && index) {
+      const entry = index.find((c) => c.slug === pendingCompany)
+      if (entry) selectCompany(entry)
+      onConsumePendingCompany?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCompany, index])
 
   const selectCompany = (entry: CompanyIndexEntry) => {
     setShowSugg(false)
@@ -336,18 +358,20 @@ export default function CompaniesPage({ onSelectDrug }: { onSelectDrug: (applica
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {detail.diseases.map((d) => (
-                      <span
+                      <button
                         key={d.slug}
-                        className="rounded-full border border-teal-200 bg-teal-50/60 px-3 py-1.5 text-xs text-teal-800"
+                        onClick={() => onSelectDisease?.(d.slug)}
+                        title="查看疾病视角"
+                        className="rounded-full border border-teal-200 bg-teal-50/60 px-3 py-1.5 text-xs text-teal-800 transition-colors hover:border-teal-400 hover:bg-teal-100"
                       >
                         {d.name_zh}
                         <span className="ml-1 font-semibold">{d.drug_count}</span>
-                      </span>
+                      </button>
                     ))}
                   </div>
                 )}
                 <p className="mt-3 text-xs text-slate-400">
-                  口径：该企业产品在疾病视角 102 病种矩阵中的命中情况，数字为覆盖药物数。
+                  口径：该企业产品在疾病视角 102 病种矩阵中的命中情况，数字为覆盖药物数；点击 chip 跳转对应疾病页。
                 </p>
               </CardContent>
             </Card>
