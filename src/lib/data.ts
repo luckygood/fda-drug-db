@@ -218,6 +218,65 @@ export function loadDisease(slug: string): Promise<DiseaseDetail> {
   return p
 }
 
+// ---- 申请号语境的通用摘要卡（分片） ----
+
+export interface AppCard {
+  efficacy_card: EfficacyCard | null
+  safety_card: SafetyCard | null
+}
+
+interface CardsIndex {
+  shard_rule: string
+  shards: string[]
+}
+
+let cardsIndexPromise: Promise<Set<string>> | null = null
+const shardCache = new Map<string, Promise<Record<string, AppCard>>>()
+
+function loadCardsIndex(): Promise<Set<string>> {
+  if (!cardsIndexPromise) {
+    cardsIndexPromise = fetch(`${import.meta.env.BASE_URL}data/cards/index.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`cards/index.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<CardsIndex>
+      })
+      .then((d) => new Set(d.shards))
+  }
+  return cardsIndexPromise
+}
+
+function loadShard(name: string): Promise<Record<string, AppCard>> {
+  let p = shardCache.get(name)
+  if (!p) {
+    p = fetch(`${import.meta.env.BASE_URL}data/cards/${name}`).then((r) => {
+      if (!r.ok) throw new Error(`${name} 加载失败: HTTP ${r.status}`)
+      return r.json() as Promise<Record<string, AppCard>>
+    })
+    shardCache.set(name, p)
+  }
+  return p
+}
+
+/** 按 application_number（如 NDA021514 / BLA125514）定位分片并取卡片 */
+export async function getAppCard(applicationNumber: string): Promise<AppCard | null> {
+  const m = /^([A-Z]+)(\d+)$/.exec(applicationNumber)
+  if (!m) return null
+  const [, type, digits] = m
+  const shards = await loadCardsIndex()
+  const candidates = [
+    `${type}-${digits.slice(0, 3)}.json`,
+    `${type}-${digits.slice(0, 2)}.json`,
+    `${type}.json`,
+  ]
+  for (const name of candidates) {
+    if (shards.has(name)) {
+      const data = await loadShard(name)
+      return data[applicationNumber] ?? null
+    }
+  }
+  return null
+}
+
 // ---- 状态与显示辅助 ----
 
 export type StatusKey = 'rx' | 'otc' | 'discontinued' | 'tentative' | 'other'

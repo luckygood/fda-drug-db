@@ -12,12 +12,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  getAppCard,
   loadDetails,
   loadProducts,
+  type AppCard,
   type AppDetail,
   type Product,
 } from '@/lib/data'
 import { StatusBadge, TypeBadge } from '@/components/StatusBadge'
+import DrugSummaryCards from '@/components/DrugSummaryCards'
 
 interface DetailPageProps {
   applicationNumber: string
@@ -38,6 +41,8 @@ export default function DetailPage({ applicationNumber, onBack }: DetailPageProp
   const [products, setProducts] = useState<Product[] | null>(null)
   const [detail, setDetail] = useState<AppDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [appCard, setAppCard] = useState<AppCard | null>(null)
+  const [cardLoading, setCardLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -51,6 +56,26 @@ export default function DetailPage({ applicationNumber, onBack }: DetailPageProp
       })
       .catch((e: Error) => {
         if (!cancelled) setError(e.message)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [applicationNumber])
+
+  // 惰性加载申请号语境的摘要卡（分片带缓存）
+  useEffect(() => {
+    let cancelled = false
+    setCardLoading(true)
+    setAppCard(null)
+    getAppCard(applicationNumber)
+      .then((c) => {
+        if (!cancelled) setAppCard(c)
+      })
+      .catch(() => {
+        if (!cancelled) setAppCard(null)
+      })
+      .finally(() => {
+        if (!cancelled) setCardLoading(false)
       })
     return () => {
       cancelled = true
@@ -127,6 +152,26 @@ export default function DetailPage({ applicationNumber, onBack }: DetailPageProp
           </div>
         </div>
       </div>
+
+      {/* 有效性 / 安全性摘要卡 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">有效性 / 安全性摘要</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {cardLoading ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              正在加载说明书摘要…
+            </div>
+          ) : (
+            <DrugSummaryCards
+              efficacyCard={appCard?.efficacy_card ?? null}
+              safetyCard={appCard?.safety_card ?? null}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* 产品规格 */}
       <Card>
