@@ -18,8 +18,10 @@
 | **药品查询** | 按药名 / 成分 / 申请号搜索 29,219 个申请、51,526 条产品记录；详情页含产品规格、审评历史（提交类型 / 分类 / 优先审评）、FDA 官方文档链接、有效性 / 安全性摘要卡、持证商与相关疾病链接 |
 | **疾病视角** | 102 个病种（12 个治疗领域）的药物全景表：每个疾病的获批药物、获批时间线、黑框警告标记，以及摘自说明书原文的有效性 / 安全性摘要卡 |
 | **数据洞察** | 行业层统计：年度获批趋势（NDA / ANDA / BLA 堆叠）、NME 年度数、优先审评占比、Top 持证商 / 成分、剂型分布 |
-| **深度挖掘** | 四个专题：治疗领域创新热度（102 疾病气泡图）、广谱药物 Top 20（跨疾病覆盖）、NME 专题（年度趋势 / Top 企业 / 最新明细）、仿制药悬崖与可及性（仿制滞后、暂定批准、单一来源成分） |
+| **深度挖掘** | 六个专题：治疗领域创新热度（102 疾病气泡图）、疾病相似性网络（Jaccard 共享药）、广谱药物 Top 20、NME 专题、仿制药悬崖与可及性、注册生命周期曲线 |
 | **企业画像** | 2,037 家归一化企业的档案：申请构成、获批时间线、NME 列表、疾病覆盖、在售产品；支持名称变体合并与中文别名检索 |
+| **出海观察** | 中国药企 FDA 获批全景：62 个识别实体的申请构成与时间线、创新药（NME）专栏、企业排行、在途管线（暂定批准聚合） |
+| **安全与市场** | 四个专题：黑框警告挖掘（年代携带率 / 主题分类 / 带黑框 NME）、撤市全景（23,389 产品）、首仿时滞（中位 14.5 年）、生物制剂崛起（BLA 份额曲线） |
 | **全局搜索** | 页头统一搜索框，一站式匹配药品（药名 / 成分）、疾病（中文 / 英文 / 同义词）、企业（归一名 / 中文别名 / 原始变体名） |
 
 ## 实体互链网络
@@ -104,10 +106,45 @@
 - **`<A-Z>.json / OTHER.json`**（27 个字母分片）：企业详情（`stats` 各类申请数 / 在售 / 撤市 / 暂定，`timeline` 逐年 NDA/ANDA/BLA，`nme_list` 含孤儿药与优先审评标记，`top_products` 在售前 30，`diseases` 疾病覆盖前 20，`variants` 原始名列表）
 - **sponsor_map.json**（85 KB，2,857 键）：原始 sponsor 名（大写）→ 企业 slug，含归一名回退键；详情页 / 疾病页持证商链接的解析依据
 
-### mining.json（30 KB，深度挖掘页）
+### mining.json（35 KB，深度挖掘页）
 
 - **生成**：`export_mining.py`
-- **五块**：`disease_heatmap`（102 疾病 × 覆盖药物数 / 近 5 年获批 / 黑框占比）、`broad_spectrum`（广谱药物 Top 20）、`nme`（yearly 2010 起 / top_companies 2016 起 / latest 2025 起明细）、`generic_cliff`（仿制药悬崖）、`supply_risk`（单一来源与撤市趋势）
+- **六块**：`disease_heatmap`（102 疾病 × 覆盖药物数 / 近 5 年获批 / 黑框占比）、`broad_spectrum`（广谱药物 Top 20）、`nme`（yearly 2010 起 / top_companies 2016 起 / latest 2025 起明细）、`generic_cliff`（仿制药悬崖）、`supply_risk`（单一来源与撤市趋势）、`lifecycle`（注册生命周期：`top_maintained` 按获批补充次数排序的维护榜、`span_hist` 跨度分布、`median_by_era` 年代中位跨度）
+
+### china_pharma.json（15 KB，出海观察页）
+
+- **生成**：`export_china.py`
+- **结构**：`summary`（实体数 / 申请分列 / 在售 / NME / 暂定）、`timeline`（逐年 NDA/ANDA/BLA）、`companies`（62 实体明细按在售排序）、`innovation`（中国实体 NME 明细，含中文别名）、`pipeline`（暂定批准按成分聚合）
+- **口径**：中国实体按归一化 sponsor 名做词边界关键词匹配（避免子串误报），人工排除非中资误报（如 HARMONY=美国公司）；部分中国原研由海外合作方持证（如 FRUZAQLA→TAKEDA），不计入
+
+### disease_network.json（46 KB，深度挖掘页网络图）
+
+- **生成**：`export_china.py`
+- **结构**：`nodes`（102 疾病：slug / name_zh / area / drug_count）、`edges`（274 条：source / target / weight / shared / examples）
+- **口径**：两疾病相似度 = 共享药物集合（药名+成分去重）的 Jaccard 系数；保留 weight≥0.15 或每节点 Top 3 强边（并集）
+
+### safety_boxed.json（135 KB，安全与市场页）
+
+- **生成**：`export_safety_market.py`（源：`fda_labels.db` 深度文本 + `fda_drugs.db`）
+- **结构**：`coverage`（说明书文档 / 深度文本 / 带黑框申请数与携带率）、`era_rates`（按获批年代携带率）、`themes`（10 类警示主题计数与示例）、`nme_boxed`（370 个带黑框 NME：主题 + 原文节选 220 字符）
+- **口径**：现行说明书快照，撤市药与部分老药无现行版本（分母偏倚，页面已注明）；主题为英文关键词归类，一药可中多主题
+
+### withdrawn.json（6.5 KB，安全与市场页）
+
+- **生成**：`export_safety_market.py`
+- **结构**：`total`（23,389 撤市产品）、`by_decade`（原获批年代）、`top_ingredients` / `top_forms`（集中度）、`anchors`（知名安全撤市药校验）、`recent`（最后监管活动倒序前 30）
+- **口径**：撤市时点用"该申请所有提交的最晚状态日期"代理；按产品计数
+
+### generic_lag.json（4.2 KB，安全与市场页）
+
+- **生成**：`export_safety_market.py`
+- **结构**：`n_matched`（1,089 匹配成分）、`median_lag`（中位 14.5 年）、`lag_hist`（年度桶分布）、`no_generic_old`（获批 ≥10 年、有在售、无 ANDA 的成分前 20）、`top_competition`（ANDA 持证数 Top 15）、`anchors`（ATORVASTATIN 14.9 年 / OMEPRAZOLE 13.2 年校验值）
+- **口径**：仅单成分、大小写/空白归一；ANDA 获批 ≠ 实际上架，未含专利和解等法律细节
+
+### biologics.json（3.1 KB，安全与市场页）
+
+- **生成**：`export_safety_market.py`
+- **结构**：`yearly`（1985 起 BLA 获批数 / 占 NDA+BLA 比例 / BLA 类 NME 数）、`top_sponsors`（BLA 持证机构 Top 15，含中文别名）、`latest_share`（最新年份份额 28.3%）
 
 ## 关键数据口径
 
@@ -143,8 +180,10 @@ python export_web_data.py       # products.json / details.json
 python export_stats.py          # stats.json
 python export_diseases.py       # diseases/*.json / index.json / app_index.json
 python export_app_cards.py      # cards/*.json（详情页摘要卡分片）
-python export_mining.py         # mining.json
+python export_mining.py         # mining.json（含注册生命周期）
 python export_companies.py      # companies/*.json / sponsor_map.json
+python export_china.py          # china_pharma.json / disease_network.json
+python export_safety_market.py  # safety_boxed/withdrawn/generic_lag/biologics.json
 # 4. 构建与部署
 cd fda-drug-web && npm run build
 ```

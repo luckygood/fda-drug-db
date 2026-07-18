@@ -359,6 +359,83 @@ export function loadAppIndex(): Promise<Record<string, { slug: string; name_zh: 
   return appIndexPromise
 }
 
+// ---- 安全与市场（第二梯队）数据 ----
+
+export interface SafetyBoxed {
+  coverage: {
+    label_docs: number
+    deep_texts: number
+    boxed_texts: number
+    labeled_apps: number
+    boxed_apps: number
+    boxed_rate: number
+  }
+  era_rates: { era: string; apps: number; boxed: number; rate: number }[]
+  themes: { key: string; name_zh: string; count: number; examples: string[] }[]
+  nme_boxed: {
+    application_number: string
+    drug_name: string
+    sponsor: string
+    ap_date: string
+    themes: string[]
+    snippet: string
+  }[]
+}
+
+export interface Withdrawn {
+  total: number
+  by_decade: { decade: string; n: number }[]
+  top_ingredients: { ingredient: string; n: number }[]
+  top_forms: { form: string; n: number }[]
+  anchors: { name: string; found: boolean; approval_date: string | null; last_action: string | null }[]
+  recent: {
+    application_number: string
+    drug_name: string
+    ingredient: string
+    approval_date: string
+    last_action: string
+  }[]
+}
+
+export interface GenericLag {
+  n_matched: number
+  median_lag: number
+  lag_hist: { bucket: string; n: number }[]
+  no_generic_old: {
+    ingredient: string
+    first_year: number
+    active_products: number
+    example_drug: string
+    application_number: string
+  }[]
+  top_competition: { ingredient: string; holders: number; anda_apps: number }[]
+  anchors: Record<string, [string, string] | null>
+}
+
+export interface Biologics {
+  yearly: { yr: string; bla: number; nda: number; share: number; bla_nme: number }[]
+  top_sponsors: { name: string; name_zh: string | null; n: number }[]
+  latest_share: number
+}
+
+function makeLoader<T>(file: string, desc: string): () => Promise<T> {
+  let promise: Promise<T> | null = null
+  return () => {
+    if (!promise) {
+      promise = fetch(`${import.meta.env.BASE_URL}data/${file}`).then((r) => {
+        if (!r.ok) throw new Error(`${desc} 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<T>
+      })
+    }
+    return promise
+  }
+}
+
+export const loadSafetyBoxed = makeLoader<SafetyBoxed>('safety_boxed.json', 'safety_boxed.json')
+export const loadWithdrawn = makeLoader<Withdrawn>('withdrawn.json', 'withdrawn.json')
+export const loadGenericLag = makeLoader<GenericLag>('generic_lag.json', 'generic_lag.json')
+export const loadBiologics = makeLoader<Biologics>('biologics.json', 'biologics.json')
+
 // ---- 中国药企出海数据 ----
 
 export interface ChinaPharma {

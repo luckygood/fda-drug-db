@@ -30,7 +30,7 @@ NME_SQL = """
 def load_disease_jsons():
     out = {}
     for f in os.listdir(DIS_DIR):
-        if f.endswith(".json") and f != "index.json":
+        if f.endswith(".json") and f not in ("index.json", "app_index.json"):
             with open(os.path.join(DIS_DIR, f), encoding="utf-8") as fh:
                 out[f[:-5]] = json.load(fh)
     return out
@@ -292,6 +292,76 @@ def main():
         {"yr": y, "n": disc[y]} for y in sorted(disc)
     ]
 
+    # ---------- 6. lifecycle：注册生命周期曲线 ----------
+    # 每个获批申请：首批日期 / 最后一次获批活动 / 获批补充次数
+    last_action = {}
+    suppl_cnt = defaultdict(int)
+    for appl_no, st_type, st_date in conn.execute(
+        "SELECT appl_no, submission_type, status_date FROM submissions WHERE submission_status = 'AP'"
+    ):
+        if not st_date:
+            continue
+        if appl_no not in last_action or st_date > last_action[appl_no]:
+            last_action[appl_no] = st_date
+        if st_type == "SUPPL":
+            suppl_cnt[appl_no] += 1
+
+    sponsor_name = dict(conn.execute("SELECT appl_no, sponsor_name FROM applications"))
+    first_drug_lc = {}
+    for appl_no, dname in conn.execute(
+        "SELECT appl_no, drug_name FROM products WHERE drug_name IS NOT NULL"
+    ):
+        first_drug_lc.setdefault(appl_no, dname)
+
+    spans = []  # (appl_no, span_years)
+    for appl_no, ap_date in conn.execute(
+        "SELECT appl_no, approval_date FROM applications WHERE approval_date IS NOT NULL"
+    ):
+        la = last_action.get(appl_no)
+        if not la or la <= ap_date:
+            continue
+        span = round(
+            (int(la[:4]) * 12 + int(la[5:7]) - int(ap_date[:4]) * 12 - int(ap_date[5:7])) / 12, 1
+        )
+        spans.append((appl_no, ap_date, la, span))
+
+    # Top 20 按获批补充次数（注册维护投入）排序，跨度次之
+    top_maintained = sorted(spans, key=lambda x: (-suppl_cnt.get(x[0], 0), -x[3]))[:20]
+    mining["lifecycle"] = {
+        "top_maintained": [
+            {
+                "application_number": f"{appl_type.get(a, '')}{a}",
+                "drug_name": first_drug_lc.get(a, ""),
+                "sponsor": sponsor_name.get(a) or "",
+                "first_ap": apd,
+                "last_action": la,
+                "span_years": sp,
+                "supplements": suppl_cnt.get(a, 0),
+            }
+            for a, apd, la, sp in top_maintained
+        ]
+    }
+
+    # 跨度分布（5 年桶）
+    hist = defaultdict(int)
+    for _a, _apd, _la, sp in spans:
+        b = min(int(sp // 5) * 5, 30)
+        hist[b] += 1
+    mining["lifecycle"]["span_hist"] = [
+        {"bucket": f"{b}-{b+4}", "n": hist[b]} for b in sorted(hist)
+    ]
+
+    # 各获批年代的中位维护跨度
+    era_spans = defaultdict(list)
+    for _a, apd, _la, sp in spans:
+        y = int(apd[:4])
+        era = f"{y // 5 * 5}-{y // 5 * 5 + 4}"
+        era_spans[era].append(sp)
+    mining["lifecycle"]["median_by_era"] = [
+        {"era": era, "median_span": round(sorted(v)[len(v) // 2], 1), "n": len(v)}
+        for era, v in sorted(era_spans.items())
+    ]
+
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(mining, f, ensure_ascii=False, separators=(",", ":"))
     size = os.path.getsize(OUT)
@@ -302,6 +372,7 @@ def main():
     print(f"  generic_cliff.stats: {mining['generic_cliff']['stats']}")
     print(f"  tentative_total_appls: {mining['generic_cliff']['tentative_total_appls']}")
     print(f"  supply_risk.single_source_count: {mining['supply_risk']['single_source_count']}")
+    print(f"  lifecycle.top_maintained#1: {mining['lifecycle']['top_maintained'][0]}")
     print(f"耗时: {time.time()-t0:.0f}s")
     conn.close()
 

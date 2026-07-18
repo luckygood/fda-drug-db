@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship } from 'lucide-react'
+import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
@@ -7,10 +7,11 @@ import DiseasesPage from './pages/DiseasesPage'
 import MiningPage from './pages/MiningPage'
 import CompaniesPage from './pages/CompaniesPage'
 import ChinaPage from './pages/ChinaPage'
+import SafetyMarketPage from './pages/SafetyMarketPage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
 
-type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china'
+type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety'
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; applicationNumber: string; from: Page }
@@ -28,6 +29,7 @@ export default function App() {
     { key: 'mining', label: '深度挖掘', icon: TrendingUp },
     { key: 'companies', label: '企业画像', icon: Building2 },
     { key: 'china', label: '出海观察', icon: Ship },
+    { key: 'safety', label: '安全与市场', icon: ShieldAlert },
   ]
 
   const openDetail = (applicationNumber: string, from: Page) =>
@@ -122,6 +124,8 @@ export default function App() {
             onSelectCompany={openCompany}
             onSelectDrug={(appNo) => openDetail(appNo, 'china')}
           />
+        ) : page === 'safety' ? (
+          <SafetyMarketPage onSelectDrug={(appNo) => openDetail(appNo, 'safety')} />
         ) : page === 'diseases' ? (
           <DiseasesPage
             pendingDisease={pendingDisease}
