@@ -135,6 +135,73 @@ export function loadStats(): Promise<Stats> {
   return statsPromise
 }
 
+// ---- 疾病视角数据 ----
+
+export interface DiseaseIndexEntry {
+  slug: string
+  name_zh: string
+  name_en: string
+  area: string
+  drug_count: number
+  newest_approval: string
+  newest_drug: string
+  boxed_count: number
+}
+
+export interface DiseaseDrug {
+  application_number: string
+  drug_name: string
+  active_ingredient: string
+  sponsor_name: string
+  appl_type: string
+  approval_date: string
+  marketing_status: string
+  has_boxed_warning: boolean
+  efficacy_snippet: string
+}
+
+export interface DiseaseDetail {
+  slug: string
+  name_zh: string
+  name_en: string
+  synonyms: string[]
+  area: string
+  approvals_by_year: Record<string, number>
+  drugs: DiseaseDrug[]
+}
+
+export interface DiseaseIndex {
+  areas: string[]
+  diseases: DiseaseIndexEntry[]
+}
+
+let diseaseIndexPromise: Promise<DiseaseIndex> | null = null
+const diseaseDetailCache = new Map<string, Promise<DiseaseDetail>>()
+
+export function loadDiseaseIndex(): Promise<DiseaseIndex> {
+  if (!diseaseIndexPromise) {
+    diseaseIndexPromise = fetch(`${import.meta.env.BASE_URL}data/diseases/index.json`).then(
+      (r) => {
+        if (!r.ok) throw new Error(`疾病索引加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<DiseaseIndex>
+      },
+    )
+  }
+  return diseaseIndexPromise
+}
+
+export function loadDisease(slug: string): Promise<DiseaseDetail> {
+  let p = diseaseDetailCache.get(slug)
+  if (!p) {
+    p = fetch(`${import.meta.env.BASE_URL}data/diseases/${slug}.json`).then((r) => {
+      if (!r.ok) throw new Error(`疾病数据加载失败: HTTP ${r.status}`)
+      return r.json() as Promise<DiseaseDetail>
+    })
+    diseaseDetailCache.set(slug, p)
+  }
+  return p
+}
+
 // ---- 状态与显示辅助 ----
 
 export type StatusKey = 'rx' | 'otc' | 'discontinued' | 'tentative' | 'other'

@@ -72,7 +72,7 @@ export default function DetailPage({ applicationNumber, onBack }: DetailPageProp
     return (
       <div className="space-y-4">
         <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> 返回搜索
+          <ArrowLeft className="mr-2 h-4 w-4" /> 返回
         </Button>
         <p className="text-red-600">详情数据加载失败:{error}</p>
       </div>
@@ -91,7 +91,7 @@ export default function DetailPage({ applicationNumber, onBack }: DetailPageProp
   return (
     <div className="space-y-6">
       <Button variant="outline" onClick={onBack}>
-        <ArrowLeft className="mr-2 h-4 w-4" /> 返回搜索
+        <ArrowLeft className="mr-2 h-4 w-4" /> 返回
       </Button>
 
       {/* 头部信息 */}

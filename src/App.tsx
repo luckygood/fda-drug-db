@@ -1,12 +1,15 @@
 import { useState } from 'react'
-import { Search, BarChart3 } from 'lucide-react'
+import { Search, BarChart3, Stethoscope } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
+import DiseasesPage from './pages/DiseasesPage'
 import { cn } from '@/lib/utils'
 
-type Page = 'search' | 'insights'
-type View = { kind: 'list' } | { kind: 'detail'; applicationNumber: string }
+type Page = 'search' | 'diseases' | 'insights'
+type View =
+  | { kind: 'list' }
+  | { kind: 'detail'; applicationNumber: string; from: Page }
 
 export default function App() {
   const [page, setPage] = useState<Page>('search')
@@ -14,6 +17,7 @@ export default function App() {
 
   const tabs: { key: Page; label: string; icon: typeof Search }[] = [
     { key: 'search', label: '药品查询', icon: Search },
+    { key: 'diseases', label: '疾病视角', icon: Stethoscope },
     { key: 'insights', label: '数据洞察', icon: BarChart3 },
   ]
 
@@ -27,7 +31,7 @@ export default function App() {
             FDA 获批药品数据库
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            数据来源：Drugs@FDA（美国食品药品监督管理局）· 数据截至 2026-07-16
+            数据来源：Drugs@FDA + openFDA 药品说明书 · 数据截至 2026-07-16
           </p>
           {/* 页面切换标签 */}
           <nav className="mt-4 flex gap-1">
@@ -36,7 +40,7 @@ export default function App() {
                 key={key}
                 onClick={() => {
                   setPage(key)
-                  if (key !== 'search') setView({ kind: 'list' })
+                  setView({ kind: 'list' })
                 }}
                 className={cn(
                   'flex items-center gap-1.5 rounded-t-lg border-b-2 px-4 py-2 text-sm font-medium transition-colors',
@@ -55,17 +59,26 @@ export default function App() {
 
       {/* 主内容 */}
       <main className="mx-auto max-w-7xl px-4 py-6">
-        {page === 'insights' ? (
-          <InsightsPage />
-        ) : view.kind === 'detail' ? (
+        {view.kind === 'detail' ? (
           <DetailPage
             applicationNumber={view.applicationNumber}
-            onBack={() => setView({ kind: 'list' })}
+            onBack={() => {
+              setPage(view.from)
+              setView({ kind: 'list' })
+            }}
+          />
+        ) : page === 'insights' ? (
+          <InsightsPage />
+        ) : page === 'diseases' ? (
+          <DiseasesPage
+            onSelectDrug={(applicationNumber) =>
+              setView({ kind: 'detail', applicationNumber, from: 'diseases' })
+            }
           />
         ) : (
           <SearchPage
             onSelect={(applicationNumber) =>
-              setView({ kind: 'detail', applicationNumber })
+              setView({ kind: 'detail', applicationNumber, from: 'search' })
             }
           />
         )}
