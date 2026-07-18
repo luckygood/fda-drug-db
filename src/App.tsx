@@ -4,7 +4,9 @@ import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
 import DiseasesPage from './pages/DiseasesPage'
+import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
+import type { DiseaseIndexEntry } from '@/lib/data'
 
 type Page = 'search' | 'diseases' | 'insights'
 type View =
@@ -14,6 +16,7 @@ type View =
 export default function App() {
   const [page, setPage] = useState<Page>('search')
   const [view, setView] = useState<View>({ kind: 'list' })
+  const [pendingDisease, setPendingDisease] = useState<DiseaseIndexEntry | null>(null)
 
   const tabs: { key: Page; label: string; icon: typeof Search }[] = [
     { key: 'search', label: '药品查询', icon: Search },
@@ -21,18 +24,34 @@ export default function App() {
     { key: 'insights', label: '数据洞察', icon: BarChart3 },
   ]
 
+  const openDetail = (applicationNumber: string, from: Page) =>
+    setView({ kind: 'detail', applicationNumber, from })
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航 */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 pt-5">
-          <h1 className="text-xl font-bold text-slate-900">
-            <span className="mr-2 text-blue-600">✚</span>
-            FDA 获批药品数据库
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            数据来源：Drugs@FDA + openFDA 药品说明书 · 数据截至 2026-07-16
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">
+                <span className="mr-2 text-blue-600">✚</span>
+                FDA 获批药品数据库
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                数据来源：Drugs@FDA + openFDA 药品说明书 · 数据截至 2026-07-16
+              </p>
+            </div>
+            {/* 全局统一搜索框（药物/疾病一站式） */}
+            <GlobalSearch
+              onSelectDisease={(entry) => {
+                setPendingDisease(entry)
+                setPage('diseases')
+                setView({ kind: 'list' })
+              }}
+              onSelectDrug={(appNo) => openDetail(appNo, page)}
+            />
+          </div>
           {/* 页面切换标签 */}
           <nav className="mt-4 flex gap-1">
             {tabs.map(({ key, label, icon: Icon }) => (
@@ -71,16 +90,12 @@ export default function App() {
           <InsightsPage />
         ) : page === 'diseases' ? (
           <DiseasesPage
-            onSelectDrug={(applicationNumber) =>
-              setView({ kind: 'detail', applicationNumber, from: 'diseases' })
-            }
+            pendingDisease={pendingDisease}
+            onConsumePending={() => setPendingDisease(null)}
+            onSelectDrug={(appNo) => openDetail(appNo, 'diseases')}
           />
         ) : (
-          <SearchPage
-            onSelect={(applicationNumber) =>
-              setView({ kind: 'detail', applicationNumber, from: 'search' })
-            }
-          />
+          <SearchPage onSelect={(appNo) => openDetail(appNo, 'search')} />
         )}
       </main>
 

@@ -23,9 +23,12 @@ import {
 
 interface DiseasesPageProps {
   onSelectDrug: (applicationNumber: string) => void
+  /** 全局搜索选中的疾病，待本页消费 */
+  pendingDisease?: DiseaseIndexEntry | null
+  onConsumePending?: () => void
 }
 
-export default function DiseasesPage({ onSelectDrug }: DiseasesPageProps) {
+export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePending }: DiseasesPageProps) {
   const [index, setIndex] = useState<DiseaseIndexEntry[] | null>(null)
   const [areas, setAreas] = useState<string[]>([])
   const [indexError, setIndexError] = useState<string | null>(null)
@@ -83,6 +86,15 @@ export default function DiseasesPage({ onSelectDrug }: DiseasesPageProps) {
       .catch(() => setDetail(null))
       .finally(() => setDetailLoading(false))
   }
+
+  // 消费全局搜索传来的疾病选择（需等疾病索引加载完成）
+  useEffect(() => {
+    if (pendingDisease && index) {
+      selectDisease(pendingDisease)
+      onConsumePending?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDisease, index])
 
   const timelineOption = useMemo((): EChartsOption | null => {
     if (!detail) return null

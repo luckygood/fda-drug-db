@@ -142,6 +142,7 @@ export interface DiseaseIndexEntry {
   name_zh: string
   name_en: string
   area: string
+  synonyms?: string[]
   drug_count: number
   newest_approval: string
   newest_drug: string
