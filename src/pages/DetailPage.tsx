@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ExternalLink, FileText, Loader2, History, Pill } from 'lucide-react'
+import { ArrowLeft, ExternalLink, FileText, Loader2, History, Pill, Stethoscope } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table'
 import {
   getAppCard,
+  loadAppIndex,
   loadDetails,
   loadProducts,
   loadSponsorMap,
@@ -29,6 +30,8 @@ interface DetailPageProps {
   onBack: () => void
   /** 点击持证商跳转企业画像（slug 由 sponsor_map 解析） */
   onSelectCompany?: (slug: string) => void
+  /** 点击相关疾病 chip 跳转疾病视角页 */
+  onSelectDisease?: (slug: string) => void
 }
 
 const STATUS_TEXT: Record<string, string> = {
@@ -41,19 +44,40 @@ function highlightClass(submissionClass: string | null): boolean {
   return c.startsWith('TYPE 1') || c.startsWith('TYPE 4')
 }
 
-export default function DetailPage({ applicationNumber, onBack, onSelectCompany }: DetailPageProps) {
+export default function DetailPage({ applicationNumber, onBack, onSelectCompany, onSelectDisease }: DetailPageProps) {
   const [products, setProducts] = useState<Product[] | null>(null)
   const [detail, setDetail] = useState<AppDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [appCard, setAppCard] = useState<AppCard | null>(null)
   const [cardLoading, setCardLoading] = useState(true)
   const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
+  const [relatedDiseases, setRelatedDiseases] = useState<{ slug: string; name_zh: string }[] | null>(null)
+  const [relatedDiseasesLoading, setRelatedDiseasesLoading] = useState(true)
 
   useEffect(() => {
     loadSponsorMap()
       .then(setSponsorMap)
       .catch(() => setSponsorMap(null))
   }, [])
+
+  // 惰性加载药品→疾病反向索引（会话内仅拉取一次）
+  useEffect(() => {
+    let cancelled = false
+    setRelatedDiseasesLoading(true)
+    loadAppIndex()
+      .then((idx) => {
+        if (!cancelled) setRelatedDiseases(idx[applicationNumber] ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setRelatedDiseases([])
+      })
+      .finally(() => {
+        if (!cancelled) setRelatedDiseasesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [applicationNumber])
 
   useEffect(() => {
     let cancelled = false
@@ -194,6 +218,45 @@ export default function DetailPage({ applicationNumber, onBack, onSelectCompany 
           )}
         </CardContent>
       </Card>
+
+      {/* 相关疾病（药品→疾病反向索引） */}
+      {onSelectDisease && (relatedDiseasesLoading || (relatedDiseases && relatedDiseases.length > 0)) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Stethoscope className="h-5 w-5 text-teal-600" />
+              相关疾病{relatedDiseases ? `（${relatedDiseases.length}）` : ''}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {relatedDiseasesLoading ? (
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span key={i} className="h-7 w-20 animate-pulse rounded-full bg-slate-100" />
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {relatedDiseases!.map((d) => (
+                    <button
+                      key={d.slug}
+                      onClick={() => onSelectDisease(d.slug)}
+                      title="查看疾病视角"
+                      className="rounded-full border border-teal-200 bg-teal-50/60 px-3 py-1.5 text-xs text-teal-800 transition-colors hover:border-teal-400 hover:bg-teal-100"
+                    >
+                      {d.name_zh}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-slate-400">
+                  口径：该申请号在疾病视角 102 病种矩阵中的命中疾病；点击跳转对应疾病页。
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* 产品规格 */}
       <Card>

@@ -99,6 +99,7 @@ export default function App() {
               setView({ kind: 'list' })
             }}
             onSelectCompany={openCompany}
+            onSelectDisease={openDisease}
           />
         ) : page === 'insights' ? (
           <InsightsPage />

@@ -332,6 +332,20 @@ export function loadMining(): Promise<MiningData> {
   return miningPromise
 }
 
+let appIndexPromise: Promise<Record<string, { slug: string; name_zh: string }[]>> | null = null
+
+/** 药品→疾病反向索引（application_number → 疾病列表），惰性加载、会话内缓存 */
+export function loadAppIndex(): Promise<Record<string, { slug: string; name_zh: string }[]>> {
+  if (!appIndexPromise) {
+    appIndexPromise = fetch(`${import.meta.env.BASE_URL}data/diseases/app_index.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`app_index.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<Record<string, { slug: string; name_zh: string }[]>>
+      })
+  }
+  return appIndexPromise
+}
+
 // ---- 企业画像数据 ----
 
 export interface CompanyIndexEntry {
