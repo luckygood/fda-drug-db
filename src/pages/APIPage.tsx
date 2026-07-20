@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Search, Pill, Stethoscope, FlaskConical, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Loader2, Search, Pill, Stethoscope, FlaskConical, TrendingUp, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
@@ -62,6 +62,10 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
   const [page, setPage] = useState(0)
   const [viewMode, setViewMode] = useState<'browse' | 'search'>('browse')
 
+  // 排序状态
+  const [sortField, setSortField] = useState<'name' | 'products' | 'lag' | 'approval'>('products')
+  const [sortDesc, setSortDesc] = useState(true)
+
   useEffect(() => {
     loadAPIIndex()
       .then(setIndex)
@@ -103,8 +107,8 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
     return map
   }, [index])
 
-  // 筛选后的列表
-  const filteredList = useMemo(() => {
+  // 筛选 + 排序后的列表
+  const sortedList = useMemo(() => {
     if (!index) return []
     let list = index
     if (activeLetter) {
@@ -113,20 +117,39 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
     if (activeStage) {
       list = list.filter((a) => a.lifecycle_stage === activeStage)
     }
+    // 排序
+    list = [...list].sort((a, b) => {
+      let cmp = 0
+      switch (sortField) {
+        case 'name':
+          cmp = a.api_name.localeCompare(b.api_name)
+          break
+        case 'products':
+          cmp = a.stats.total - b.stats.total
+          break
+        case 'lag':
+          cmp = (a.generic_lag_years ?? -1) - (b.generic_lag_years ?? -1)
+          break
+        case 'approval':
+          cmp = (a.first_approval || '').localeCompare(b.first_approval || '')
+          break
+      }
+      return sortDesc ? -cmp : cmp
+    })
     return list
-  }, [index, activeLetter, activeStage])
+  }, [index, activeLetter, activeStage, sortField, sortDesc])
 
   // 分页
-  const totalPages = Math.ceil(filteredList.length / PAGE_SIZE)
+  const totalPages = Math.ceil(sortedList.length / PAGE_SIZE)
   const pagedList = useMemo(() => {
     const start = page * PAGE_SIZE
-    return filteredList.slice(start, start + PAGE_SIZE)
-  }, [filteredList, page])
+    return sortedList.slice(start, start + PAGE_SIZE)
+  }, [sortedList, page])
 
-  // 切换筛选条件时重置页码
+  // 切换筛选或排序条件时重置页码
   useEffect(() => {
     setPage(0)
-  }, [activeLetter, activeStage])
+  }, [activeLetter, activeStage, sortField, sortDesc])
 
   // 消费跨页传入的 API 选择（需等索引加载完成）
   useEffect(() => {
@@ -166,6 +189,22 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
     setViewMode('browse')
     setDetail(null)
     setDetailError(null)
+    setSortField('products')
+    setSortDesc(true)
+  }
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDesc((d) => !d)
+    } else {
+      setSortField(field)
+      setSortDesc(field === 'products' || field === 'approval')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: typeof sortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-slate-300" />
+    return sortDesc ? <ArrowDown className="h-3 w-3 text-blue-600" /> : <ArrowUp className="h-3 w-3 text-blue-600" />
   }
 
   const productTypeOption = useMemo((): EChartsOption | null => {
@@ -350,12 +389,12 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
                 )}
               </CardTitle>
               <span className="text-xs text-slate-400">
-                共 {filteredList.length.toLocaleString()} 个 · 第 {page + 1}/{Math.max(1, totalPages)} 页
+                共 {sortedList.length.toLocaleString()} 个 · 第 {page + 1}/{Math.max(1, totalPages)} 页
               </span>
             </div>
           </CardHeader>
           <CardContent>
-            {filteredList.length === 0 ? (
+            {sortedList.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-16 text-slate-400">
                 <FlaskConical className="h-10 w-10" />
                 <p className="text-sm">暂无符合条件的 API</p>
@@ -365,14 +404,50 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
               </div>
             ) : (
               <>
+                {/* 排序栏 */}
+                <div className="mb-3 flex flex-wrap items-center gap-3">
+                  <span className="text-xs text-slate-400">排序：</span>
+                  {[
+                    { key: 'products' as const, label: '产品数' },
+                    { key: 'lag' as const, label: '首仿时滞' },
+                    { key: 'name' as const, label: '名称' },
+                    { key: 'approval' as const, label: '首获批年份' },
+                  ].map((s) => (
+                    <button
+                      key={s.key}
+                      onClick={() => toggleSort(s.key)}
+                      className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                        sortField === s.key
+                          ? 'border-blue-300 bg-blue-50 text-blue-700'
+                          : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                      }`}
+                    >
+                      {s.label}
+                      <SortIcon field={s.key} />
+                    </button>
+                  ))}
+                </div>
+
                 <div className="max-h-[520px] overflow-auto rounded-md border border-slate-100">
                   <table className="w-full border-collapse">
                     <thead className="sticky top-0 bg-slate-50">
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">活性成分</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">产品数</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">
+                          <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-blue-600">
+                            活性成分 <SortIcon field="name" />
+                          </button>
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">
+                          <button onClick={() => toggleSort('products')} className="flex items-center gap-1 hover:text-blue-600">
+                            产品数 <SortIcon field="products" />
+                          </button>
+                        </th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">生命周期</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">首仿时滞</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">
+                          <button onClick={() => toggleSort('lag')} className="flex items-center gap-1 hover:text-blue-600">
+                            首仿时滞 <SortIcon field="lag" />
+                          </button>
+                        </th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">原研企业</th>
                       </tr>
                     </thead>
@@ -420,7 +495,6 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
                     </button>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(10, totalPages) }, (_, i) => {
-                        // 显示当前页附近的页码
                         let p: number
                         if (totalPages <= 10) {
                           p = i
