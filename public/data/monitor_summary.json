@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-20T13:44:44+08:00",
+  "generated_at": "2026-07-20T14:11:11+08:00",
   "ob_version": "2026-07-18",
   "shortages_version": "2026-07-18",
   "pb_version": "2026-06",
@@ -82,16 +82,16 @@
     "watch": 936,
     "top_high": [
       {
-        "ingredient": "DEXTROSE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; POTASSIUM PHOSPHATE, DIBASIC; SODIUM ACETATE",
-        "status": "Currently in Shortage",
-        "update_date": "2026-07-17",
-        "sole_supplier": "B BRAUN"
-      },
-      {
         "ingredient": "DEXTROSE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; SODIUM ACETATE; SODIUM CHLORIDE; SODIUM GLUCONATE",
         "status": "Currently in Shortage",
         "update_date": "2026-07-17",
         "sole_supplier": "OTSUKA ICU MEDCL"
+      },
+      {
+        "ingredient": "DEXTROSE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; POTASSIUM PHOSPHATE, DIBASIC; SODIUM ACETATE",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-17",
+        "sole_supplier": "B BRAUN"
       },
       {
         "ingredient": "CALCIUM CHLORIDE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; SODIUM ACETATE; SODIUM CHLORIDE",
@@ -124,10 +124,10 @@
         "sole_supplier": "LEGACY"
       },
       {
-        "ingredient": "CALCIUM CHLORIDE; DEXTROSE; MAGNESIUM SULFATE; POTASSIUM CHLORIDE; SODIUM BICARBONATE; SODIUM CHLORIDE; SODIUM PHOSPHATE, DIBASIC, HEPTAHYDRATE",
+        "ingredient": "CALCIUM CHLORIDE; DEXTROSE; GLUTATHIONE DISULFIDE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; SODIUM BICARBONATE; SODIUM CHLORIDE; SODIUM PHOSPHATE",
         "status": "Currently in Shortage",
         "update_date": "2026-07-16",
-        "sole_supplier": "LUKARE MEDICAL LLC"
+        "sole_supplier": "ALCON"
       }
     ]
   },
