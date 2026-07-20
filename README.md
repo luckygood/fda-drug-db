@@ -219,6 +219,22 @@ cd fda-drug-web && npm run build
 
 `disease_drugs.py` 为共享库（FTS 检索 / 去重 / 关联 / 摘要提取），被 `export_diseases.py` 与 `export_app_cards.py` 引用，不单独运行。
 
+## 月度刷新（三源自动管线）
+
+橙皮书 / 短缺库 / 紫皮书三个外部源的"抓取 → 导出 → 摘要 → 构建 → 部署 gh-pages"已固化为幂等脚本：
+
+```bash
+bash fda-drug-web/scripts/monthly_refresh.sh    # 任意 cwd 可跑；退出码 0 全成功 / 2 部分失败 / 1 全失败
+```
+
+- **抓取**（`scripts/fetch_sources.py`）：openFDA 橙皮书与短缺全量 zip 直连 `download.open.fda.gov`；紫皮书月度 CSV 经 allorigins 代理重试（fda.gov 主站有 Akamai 反爬），依次尝试当月→上月→上上月，校验 `BLA Number` 表头后才落盘。单源失败保留 `data_lake/` 旧文件并记入 `fetch_report.json`
+- **导出**：抓取失败的源自动跳过；导出失败自动回滚该 JSON 为旧版（备份在 `data_lake/.backup-json/`）
+- **监控摘要**（`scripts/build_monitor_summary.py`）：生成 `public/data/monitor_summary.json`——三源版本日期、专利悬崖 Top 8（含 days_left）、高风险短缺 Top 8（含 sole_supplier）、生物类似药 Top 8、failures 列表与一句话中文摘要，供看板 Widget 消费
+- **部署**：gh-pages 孤儿分支，显式 `git add index.html assets data`（严禁 `-A`），push 走 6 个 GitHub IP 轮换
+- 日志：`data_lake/monthly_refresh.log`；执行手册与故障处置见 `scripts/RUNBOOK.md`
+
+建议每月 5 日运行一次（紫皮书月度版月初后数日发布）。窗口指标（专利悬崖 36 个月）随运行日滚动，跨月数字小幅变化属预期。
+
 ## 部署
 
 GitHub Pages 发布 `gh-pages` 分支，内容为 `dist/` 产物平铺到分支根：
