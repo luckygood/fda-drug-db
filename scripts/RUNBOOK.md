@@ -31,6 +31,7 @@ echo "exit=$?"   # 0 全成功 / 2 部分失败 / 1 全部失败
 | ① 抓取 | `python3 fda-drug-web/scripts/fetch_sources.py` | `data_lake/orangebook/drug-orangebook-0001-of-0001.json`、`data_lake/shortages/drug-shortages-0001-of-0001.json`、`data_lake/purplebook/purplebook-search-<Month>-<YYYY>-data-download.csv`（新版才落盘）、`data_lake/fetch_report.json` | 单源失败保留旧文件，failures 记录，退出码 2；全失败退出码 1 |
 | ② 导出 | `export_orangebook.py` / `export_supply.py` / `export_purplebook.py` | `public/data/{patent_cliff,supply_risk,biosimilars}.json` | 抓取失败的源跳过导出；导出失败自动回滚该 JSON 为旧版（备份在 `data_lake/.backup-json/`） |
 | ③ 摘要 | `build_monitor_summary.py` | `public/data/monitor_summary.json` | 失败记入 failures，继续 |
+| ③b | 自动提交刷新数据到 main（无变化则跳过） | main 新增 `data: 月更数据 <日期>` 提交 | 失败记 failures；此步是为防部署 checkout 还原旧数据 |
 | ④ 构建 | `cd fda-drug-web && npm run build` | `dist/`（含 `assets/index-<hash>.js`） | 失败则跳过部署，最终退出码 2 |
 | ⑤ 部署 | gh-pages 孤儿分支（脚本内） | 远端 `gh-pages` 分支强推更新 | 6 个 GitHub IP 轮换重试；全失败记 failures，退出码 2 |
 
@@ -41,6 +42,7 @@ echo "exit=$?"   # 0 全成功 / 2 部分失败 / 1 全部失败
 - **紫皮书抓取 522 / 空响应**：allorigins 代理间歇故障属常态，脚本已对每个月份候选重试 6 次（间隔 8s）、并依次回退当月→上月→上上月。若当月新版尚未发布（月初滞后），且本地已有同月文件，视为成功跳过（幂等）。
 - **fda.gov 主站 302 → abuse 页**：预期行为。橙皮书/短缺走 `download.open.fda.gov`（不被拦），紫皮书走代理；不要尝试直连 `purplebooksearch.fda.gov`。
 - **代理取回 HTML 错误页**：脚本校验 CSV 表头（`BLA Number`），不合格自动丢弃重试。
+- **工作区必须干净**：`monthly_refresh.sh` 部署步含 `git checkout --orphan` + `git checkout -f main`，会**丢弃仓库内所有未提交改动**。运行前确保 `fda-drug-web` 工作树无未提交修改（脚本产物——三个数据 JSON 与 monitor_summary——由管线自身在部署前生成并打包进 dist，不受此影响，但脚本源码改动必须先提交）。
 - **`git add` 纪律**：部署只允许 `git add index.html assets data`，**严禁 `git add -A`**（会把 node_modules 纳入孤儿分支索引，切回 main 时污染工作区）。
 - **7100 端口**：平台预览服务，任何清理操作都不要杀它。
 - **退出码 1 的含义**：三源抓取全部失败。此时旧 JSON 未动，脚本仍会用旧数据完成摘要/构建/部署（保证站点可用），但 failures 里会有三条 fetch 记录，看板应显示数据停滞。

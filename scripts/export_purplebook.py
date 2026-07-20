@@ -11,20 +11,53 @@
 """
 import csv
 import json
+import re
 import sqlite3
 from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-PB_CSV = ROOT / "data_lake/purplebook/purplebook-search-June-2026-data-download.csv"
+PB_DIR = ROOT / "data_lake/purplebook"
 DRUGS_DB = ROOT / "fda_drugs.db"
 AUX_DB = ROOT / "fda_aux.db"
 OUT_JSON = ROOT / "fda-drug-web/public/data/biosimilars.json"
 
 TODAY = date.today()
-PB_VERSION = "2026-06"
 WINDOW_END = date(TODAY.year + 3, TODAY.month, TODAY.day)
+
+_MONTHS = {m.lower(): i + 1 for i, m in enumerate(
+    ["January", "February", "March", "April", "May", "June",
+     "July", "August", "September", "October", "November", "December"])}
+
+
+def _parse_pb_name(name):
+    """'purplebook-search-June-2026-data-download.csv' / 'purplebook-search-June-data-download.csv'
+    -> (year, month)；无年份时按当年计。解析失败返回 None。"""
+    m = re.search(r"purplebook-search-([A-Za-z]+)(?:-(\d{4}))?-data-download", name)
+    if not m:
+        return None
+    mon = _MONTHS.get(m.group(1).lower())
+    if not mon:
+        return None
+    return (int(m.group(2)) if m.group(2) else TODAY.year, mon)
+
+
+def _find_pb_csv():
+    """取 data_lake/purplebook 下最新月份的紫皮书 CSV（幂等：月更新文件落盘后自动切换）。"""
+    cands = []
+    for p in PB_DIR.glob("purplebook-search-*-data-download.csv"):
+        ym = _parse_pb_name(p.name)
+        if ym:
+            cands.append((ym, p))
+    if not cands:
+        raise FileNotFoundError(f"{PB_DIR} 下未找到 purplebook-search-*-data-download.csv")
+    return sorted(cands, key=lambda t: t[0])[-1][1]
+
+
+PB_CSV = _find_pb_csv()
+_PB_YM = _parse_pb_name(PB_CSV.name)
+PB_VERSION = f"{_PB_YM[0]}-{_PB_YM[1]:02d}"
 
 
 def pdate(s):

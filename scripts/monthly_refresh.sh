@@ -103,6 +103,18 @@ else
   die_note "build_monitor_summary: 退出码 $?"
 fi
 
+# 部署 checkout -f main 会把工作树还原到 main 最近提交——先把刷新后的数据提交到 main，
+# 保证部署后工作区与线上一致（幂等：无变化则跳过；脚本源码改动须运行前手动提交，见 RUNBOOK）
+if ! (cd "$WEB_DIR" && git diff --quiet -- public/data) 2>/dev/null; then
+  if (cd "$WEB_DIR" && git add public/data/patent_cliff.json public/data/supply_risk.json \
+        public/data/biosimilars.json public/data/monitor_summary.json && \
+      git "${GIT_ID[@]}" commit -qm "data: 月更数据 $(date '+%Y-%m-%d')") >> "$LOG_FILE" 2>&1; then
+    log "刷新后数据已提交到 main"
+  else
+    die_note "main_commit: 数据 JSON 提交 main 失败"
+  fi
+fi
+
 # ---------- 步骤 ④ 构建 ----------
 log "步骤 4/5：npm run build"
 BUILD_OK=0
