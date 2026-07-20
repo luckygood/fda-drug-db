@@ -828,3 +828,111 @@ export const STATUS_LABEL: Record<StatusKey, string> = {
   tentative: '暂定批准',
   other: '其他',
 }
+
+// ---- API（活性成分）数据 ----
+
+export interface APIStats {
+  total: number
+  nda: number
+  anda: number
+  bla: number
+  active: number
+  discontinued: number
+  tentative: number
+}
+
+export interface APIProduct {
+  application_number: string
+  appl_type: string
+  drug_name: string
+  active_ingredient: string
+  form: string
+  strength: string
+  sponsor_name: string
+  approval_date: string
+  marketing_status: string
+  te_code: string
+}
+
+export interface APIDiseaseLink {
+  slug: string
+  name_zh: string
+  drug_count: number
+}
+
+export interface APIIndexEntry {
+  api_name: string
+  api_slug: string
+  api_type: string
+  stats: APIStats
+  lifecycle_stage: string
+  generic_lag_years: number | null
+  first_approval: string
+  originator: string
+}
+
+export interface APIDetail {
+  api_name: string
+  api_slug: string
+  api_type: string
+  first_approval: string
+  originator: string
+  originator_appl: string
+  stats: APIStats
+  lifecycle_stage: string
+  generic_lag_years: number | null
+  products: APIProduct[]
+  diseases: APIDiseaseLink[]
+}
+
+export interface APIIndex {
+  apis: APIIndexEntry[]
+}
+
+let apiIndexPromise: Promise<APIIndexEntry[]> | null = null
+const apiShardCache = new Map<string, Promise<APIDetail[]>>()
+
+export function loadAPIIndex(): Promise<APIIndexEntry[]> {
+  if (!apiIndexPromise) {
+    apiIndexPromise = fetch(`${import.meta.env.BASE_URL}data/api/index.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`API 索引加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<APIIndex>
+      })
+      .then((d) => d.apis)
+  }
+  return apiIndexPromise
+}
+
+export function apiShardLetter(slug: string): string {
+  const c = (slug[0] || '').toUpperCase()
+  return c >= 'A' && c <= 'Z' ? c : 'OTHER'
+}
+
+export function loadAPIShard(letter: string): Promise<APIDetail[]> {
+  const key = /^[A-Z]$/.test(letter) ? letter : 'OTHER'
+  let p = apiShardCache.get(key)
+  if (!p) {
+    p = fetch(`${import.meta.env.BASE_URL}data/api/${key}.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`API 分片 ${key} 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<{ apis: APIDetail[] }>
+      })
+      .then((d) => d.apis)
+    apiShardCache.set(key, p)
+  }
+  return p
+}
+
+let apiDiseaseMatrixPromise: Promise<Record<string, APIDiseaseLink[]>> | null = null
+
+export function loadAPIDiseaseMatrix(): Promise<Record<string, APIDiseaseLink[]>> {
+  if (!apiDiseaseMatrixPromise) {
+    apiDiseaseMatrixPromise = fetch(`${import.meta.env.BASE_URL}data/api/disease_matrix.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`API 疾病矩阵加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<Record<string, APIDiseaseLink[]>>
+      })
+  }
+  return apiDiseaseMatrixPromise
+}

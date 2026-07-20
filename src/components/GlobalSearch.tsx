@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Loader2, Pill, Stethoscope, Building2 } from 'lucide-react'
+import { Search, Loader2, Pill, Stethoscope, Building2, FlaskConical } from 'lucide-react'
 import {
+  loadAPIIndex,
   loadCompanyIndex,
   loadDiseaseIndex,
   loadProducts,
   loadSponsorMap,
+  type APIIndexEntry,
   type CompanyIndexEntry,
   type DiseaseIndexEntry,
   type Product,
@@ -14,17 +16,19 @@ interface GlobalSearchProps {
   onSelectDisease: (entry: DiseaseIndexEntry) => void
   onSelectDrug: (applicationNumber: string) => void
   onSelectCompany: (entry: CompanyIndexEntry) => void
+  onSelectAPI?: (entry: APIIndexEntry) => void
 }
 
 type Suggestion =
   | { kind: 'disease'; entry: DiseaseIndexEntry }
+  | { kind: 'api'; entry: APIIndexEntry }
   | { kind: 'company'; entry: CompanyIndexEntry }
   | { kind: 'drug'; product: Product }
 
 const MAX_PER_GROUP = 8
 const MAX_COMPANY = 5
 
-export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCompany }: GlobalSearchProps) {
+export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCompany, onSelectAPI }: GlobalSearchProps) {
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [open, setOpen] = useState(false)
@@ -35,14 +39,18 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCo
   const [companies, setCompanies] = useState<CompanyIndexEntry[] | null>(null)
   const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
   const [companiesLoading, setCompaniesLoading] = useState(false)
+  const [apiIndex, setApiIndex] = useState<APIIndexEntry[] | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  // 疾病索引立即加载（体积小）；药品/企业数据聚焦时按需加载
+  // 疾病/API 索引立即加载（体积小）；药品/企业数据聚焦时按需加载
   useEffect(() => {
     loadDiseaseIndex()
       .then((d) => setDiseases(d.diseases))
       .catch(() => setDiseases([]))
+    loadAPIIndex()
+      .then(setApiIndex)
+      .catch(() => setApiIndex([]))
   }, [])
 
   const ensureProducts = () => {
@@ -147,13 +155,20 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCo
     return [...hits.values()].slice(0, MAX_COMPANY)
   }, [companies, sponsorMap, debounced])
 
-  // 拍平成可选列表（疾病 → 企业 → 药品）
+  const apiMatches = useMemo((): APIIndexEntry[] => {
+    if (!apiIndex || !debounced || debounced.length < 2) return []
+    const q = debounced.toUpperCase()
+    return apiIndex.filter((a) => a.api_name.includes(q)).slice(0, MAX_PER_GROUP)
+  }, [apiIndex, debounced])
+
+  // 拍平成可选列表（疾病 → API → 企业 → 药品）
   const suggestions = useMemo((): Suggestion[] => {
     const list: Suggestion[] = diseaseMatches.map((entry) => ({ kind: 'disease', entry }))
+    for (const entry of apiMatches) list.push({ kind: 'api', entry })
     for (const entry of companyMatches) list.push({ kind: 'company', entry })
     for (const product of drugMatches) list.push({ kind: 'drug', product })
     return list
-  }, [diseaseMatches, companyMatches, drugMatches])
+  }, [diseaseMatches, apiMatches, companyMatches, drugMatches])
 
   useEffect(() => {
     setActive(-1)
@@ -170,6 +185,7 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCo
     setOpen(false)
     setQuery('')
     if (s.kind === 'disease') onSelectDisease(s.entry)
+    else if (s.kind === 'api') onSelectAPI?.(s.entry)
     else if (s.kind === 'company') onSelectCompany(s.entry)
     else onSelectDrug(s.product.application_number)
   }
@@ -195,6 +211,9 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCo
 
   const showDropdown = open && debounced.length > 0
   const diseaseStart = 0
+  const apiStart = diseaseMatches.length
+  const companyStart = apiStart + apiMatches.length
+  const drugStart = companyStart + companyMatches.length
 
   return (
     <div ref={rootRef} className="relative w-full sm:w-80">
@@ -212,7 +231,7 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCo
             ensureCompanies()
           }}
           onKeyDown={onKeyDown}
-          placeholder="全局搜索：疾病 / 药品 / 企业…"
+          placeholder="全局搜索：疾病 / 活性成分 / 药品 / 企业…"
           className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
         />
       </div>
@@ -242,6 +261,29 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCo
               </div>
             )}
 
+            {/* API 组 */}
+            {apiMatches.length > 0 && (
+              <div>
+                <p className="bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-400">活性成分</p>
+                {apiMatches.map((a, i) => (
+                  <button
+                    key={`a-${a.api_slug}`}
+                    onClick={() => choose({ kind: 'api', entry: a })}
+                    onMouseEnter={() => setActive(apiStart + i)}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                      active === apiStart + i ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <FlaskConical className="h-4 w-4 shrink-0 text-emerald-600" />
+                    <span className="font-medium text-slate-800">{a.api_name}</span>
+                    <span className="ml-auto shrink-0 text-xs text-slate-400">
+                      {a.stats.total} 产品
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* 企业组 */}
             {(companyMatches.length > 0 || (companiesLoading && debounced.length >= 2)) && (
               <div>
@@ -252,28 +294,25 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCo
                     正在加载企业数据…
                   </p>
                 )}
-                {companyMatches.map((c, i) => {
-                  const idx = diseaseMatches.length + i
-                  return (
-                    <button
-                      key={`c-${c.slug}`}
-                      onClick={() => choose({ kind: 'company', entry: c })}
-                      onMouseEnter={() => setActive(idx)}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
-                        active === idx ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <Building2 className="h-4 w-4 shrink-0 text-violet-600" />
-                      <span className="truncate font-medium text-slate-800">{c.name}</span>
-                      {c.name_zh && (
-                        <span className="shrink-0 text-xs text-slate-500">{c.name_zh}</span>
-                      )}
-                      <span className="ml-auto shrink-0 text-xs text-slate-400">
-                        在售 {c.active_products}
-                      </span>
-                    </button>
-                  )
-                })}
+                {companyMatches.map((c, i) => (
+                  <button
+                    key={`c-${c.slug}`}
+                    onClick={() => choose({ kind: 'company', entry: c })}
+                    onMouseEnter={() => setActive(companyStart + i)}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                      active === companyStart + i ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <Building2 className="h-4 w-4 shrink-0 text-violet-600" />
+                    <span className="truncate font-medium text-slate-800">{c.name}</span>
+                    {c.name_zh && (
+                      <span className="shrink-0 text-xs text-slate-500">{c.name_zh}</span>
+                    )}
+                    <span className="ml-auto shrink-0 text-xs text-slate-400">
+                      在售 {c.active_products}
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
 
@@ -287,33 +326,30 @@ export default function GlobalSearch({ onSelectDisease, onSelectDrug, onSelectCo
                     正在加载药品数据…
                   </p>
                 )}
-                {drugMatches.map((p, i) => {
-                  const idx = diseaseMatches.length + companyMatches.length + i
-                  return (
-                    <button
-                      key={`p-${p.application_number}`}
-                      onClick={() => choose({ kind: 'drug', product: p })}
-                      onMouseEnter={() => setActive(idx)}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
-                        active === idx ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <Pill className="h-4 w-4 shrink-0 text-blue-600" />
-                      <span className="font-medium text-slate-800">{p.drug_name}</span>
-                      <span className="truncate text-xs text-slate-400">{p.active_ingredient}</span>
-                      <span className="ml-auto shrink-0 font-mono text-xs text-slate-400">
-                        {p.application_number}
-                      </span>
-                    </button>
-                  )
-                })}
+                {drugMatches.map((p, i) => (
+                  <button
+                    key={`p-${p.application_number}`}
+                    onClick={() => choose({ kind: 'drug', product: p })}
+                    onMouseEnter={() => setActive(drugStart + i)}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                      active === drugStart + i ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <Pill className="h-4 w-4 shrink-0 text-blue-600" />
+                    <span className="font-medium text-slate-800">{p.drug_name}</span>
+                    <span className="truncate text-xs text-slate-400">{p.active_ingredient}</span>
+                    <span className="ml-auto shrink-0 font-mono text-xs text-slate-400">
+                      {p.application_number}
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
 
             {/* 空结果 */}
-            {diseaseMatches.length === 0 && companyMatches.length === 0 && drugMatches.length === 0 && !productsLoading && !companiesLoading && (
+            {diseaseMatches.length === 0 && apiMatches.length === 0 && companyMatches.length === 0 && drugMatches.length === 0 && !productsLoading && !companiesLoading && (
               <p className="px-3 py-4 text-center text-sm text-slate-400">
-                未找到匹配的疾病、药品或企业
+                未找到匹配的疾病、活性成分、药品或企业
               </p>
             )}
           </div>

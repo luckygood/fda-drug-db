@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark } from 'lucide-react'
+import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark, FlaskConical } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
@@ -9,10 +9,11 @@ import CompaniesPage from './pages/CompaniesPage'
 import ChinaPage from './pages/ChinaPage'
 import SafetyMarketPage from './pages/SafetyMarketPage'
 import PatentSupplyPage from './pages/PatentSupplyPage'
+import APIPage from './pages/APIPage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
 
-type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent'
+type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent' | 'api'
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; applicationNumber: string; from: Page }
@@ -22,10 +23,12 @@ export default function App() {
   const [view, setView] = useState<View>({ kind: 'list' })
   const [pendingDisease, setPendingDisease] = useState<string | null>(null)
   const [pendingCompany, setPendingCompany] = useState<string | null>(null)
+  const [pendingAPI, setPendingAPI] = useState<string | null>(null)
 
   const tabs: { key: Page; label: string; icon: typeof Search }[] = [
     { key: 'search', label: '药品查询', icon: Search },
     { key: 'diseases', label: '疾病视角', icon: Stethoscope },
+    { key: 'api', label: '成分透视', icon: FlaskConical },
     { key: 'insights', label: '数据洞察', icon: BarChart3 },
     { key: 'mining', label: '深度挖掘', icon: TrendingUp },
     { key: 'companies', label: '企业画像', icon: Building2 },
@@ -49,6 +52,12 @@ export default function App() {
     setView({ kind: 'list' })
   }
 
+  const openAPI = (slug: string) => {
+    setPendingAPI(slug)
+    setPage('api')
+    setView({ kind: 'list' })
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航 */}
@@ -64,11 +73,12 @@ export default function App() {
                 数据来源：Drugs@FDA + openFDA（说明书 / 橙皮书 / 短缺库）+ 紫皮书 · 数据截至 2026-07-18
               </p>
             </div>
-            {/* 全局统一搜索框（药物/疾病/企业一站式） */}
+            {/* 全局统一搜索框（药物/疾病/活性成分/企业一站式） */}
             <GlobalSearch
               onSelectDisease={(entry) => openDisease(entry.slug)}
               onSelectDrug={(appNo) => openDetail(appNo, page)}
               onSelectCompany={(entry) => openCompany(entry.slug)}
+              onSelectAPI={(entry) => openAPI(entry.api_slug)}
             />
           </div>
           {/* 页面切换标签 */}
@@ -136,6 +146,13 @@ export default function App() {
             onConsumePending={() => setPendingDisease(null)}
             onSelectDrug={(appNo) => openDetail(appNo, 'diseases')}
             onSelectCompany={openCompany}
+          />
+        ) : page === 'api' ? (
+          <APIPage
+            pendingAPI={pendingAPI}
+            onConsumePendingAPI={() => setPendingAPI(null)}
+            onSelectDrug={(appNo) => openDetail(appNo, 'api')}
+            onSelectDisease={openDisease}
           />
         ) : (
           <SearchPage onSelect={(appNo) => openDetail(appNo, 'search')} />
