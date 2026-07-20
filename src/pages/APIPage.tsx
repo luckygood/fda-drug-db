@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Search, Pill, Stethoscope, FlaskConical, TrendingUp } from 'lucide-react'
+import { Loader2, Search, Pill, Stethoscope, FlaskConical, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
@@ -22,6 +22,10 @@ const STAGE_LABEL: Record<string, string> = {
   mature: '充分竞争',
   commoditized: ' commoditized',
 }
+
+const STAGES = ['pioneer', 'growth', 'mature', 'commoditized'] as const
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+const PAGE_SIZE = 60
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -52,6 +56,12 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
   const [detailError, setDetailError] = useState<string | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
 
+  // 全面浏览状态
+  const [activeLetter, setActiveLetter] = useState<string | null>(null)
+  const [activeStage, setActiveStage] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [viewMode, setViewMode] = useState<'browse' | 'search'>('browse')
+
   useEffect(() => {
     loadAPIIndex()
       .then(setIndex)
@@ -72,7 +82,51 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
     return index.filter((a) => a.api_name.includes(q)).slice(0, 8)
   }, [index, query])
 
-  const hotAPIs = useMemo(() => (index ? index.slice(0, 12) : []), [index])
+  // 按字母分布统计（用于索引条高亮）
+  const letterCounts = useMemo(() => {
+    if (!index) return new Map<string, number>()
+    const map = new Map<string, number>()
+    for (const a of index) {
+      const c = apiShardLetter(a.api_slug)
+      map.set(c, (map.get(c) || 0) + 1)
+    }
+    return map
+  }, [index])
+
+  // 生命周期分布统计
+  const stageCounts = useMemo(() => {
+    if (!index) return new Map<string, number>()
+    const map = new Map<string, number>()
+    for (const a of index) {
+      map.set(a.lifecycle_stage, (map.get(a.lifecycle_stage) || 0) + 1)
+    }
+    return map
+  }, [index])
+
+  // 筛选后的列表
+  const filteredList = useMemo(() => {
+    if (!index) return []
+    let list = index
+    if (activeLetter) {
+      list = list.filter((a) => apiShardLetter(a.api_slug) === activeLetter)
+    }
+    if (activeStage) {
+      list = list.filter((a) => a.lifecycle_stage === activeStage)
+    }
+    return list
+  }, [index, activeLetter, activeStage])
+
+  // 分页
+  const totalPages = Math.ceil(filteredList.length / PAGE_SIZE)
+  const pagedList = useMemo(() => {
+    const start = page * PAGE_SIZE
+    return filteredList.slice(start, start + PAGE_SIZE)
+  }, [filteredList, page])
+
+  // 切换筛选条件时重置页码
+  useEffect(() => {
+    setPage(0)
+  }, [activeLetter, activeStage])
 
   // 消费跨页传入的 API 选择（需等索引加载完成）
   useEffect(() => {
@@ -87,6 +141,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
   const selectAPI = (entry: APIIndexEntry) => {
     setShowSugg(false)
     setQuery(entry.api_name)
+    setViewMode('search')
     setLoadingDetail(true)
     setDetailError(null)
     loadAPIShard(apiShardLetter(entry.api_slug))
@@ -97,6 +152,20 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
       })
       .catch((e: Error) => setDetailError(e.message))
       .finally(() => setLoadingDetail(false))
+  }
+
+  const handleSearchSelect = (entry: APIIndexEntry) => {
+    selectAPI(entry)
+  }
+
+  const clearFilters = () => {
+    setActiveLetter(null)
+    setActiveStage(null)
+    setPage(0)
+    setQuery('')
+    setViewMode('browse')
+    setDetail(null)
+    setDetailError(null)
   }
 
   const productTypeOption = useMemo((): EChartsOption | null => {
@@ -143,7 +212,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
 
   return (
     <div className="space-y-6">
-      {/* 搜索 + 热门 API */}
+      {/* 搜索 */}
       <Card>
         <CardContent className="space-y-4 pt-5">
           <div ref={searchRef} className="relative">
@@ -154,21 +223,27 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
                 onChange={(e) => {
                   setQuery(e.target.value)
                   setShowSugg(true)
+                  if (e.target.value.trim()) setViewMode('search')
                 }}
                 onFocus={() => setShowSugg(true)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && suggestions.length > 0) selectAPI(suggestions[0])
+                  if (e.key === 'Enter' && suggestions.length > 0) handleSearchSelect(suggestions[0])
                 }}
                 placeholder="搜索活性成分（如 IBUPROFEN、Pembrolizumab）…"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
               />
+              {query && (
+                <button onClick={clearFilters} className="text-xs text-slate-400 hover:text-slate-600">
+                  清除
+                </button>
+              )}
             </div>
             {showSugg && suggestions.length > 0 && (
               <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
                 {suggestions.map((a) => (
                   <li key={a.api_slug}>
                     <button
-                      onClick={() => selectAPI(a)}
+                      onClick={() => handleSearchSelect(a)}
                       className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-blue-50/60"
                     >
                       <span className="truncate font-medium text-slate-800">{a.api_name}</span>
@@ -181,27 +256,208 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
               </ul>
             )}
           </div>
+
+          {/* 字母索引 */}
           <div>
-            <p className="mb-2 text-xs text-slate-400">热门 API（按产品数）</p>
-            <div className="flex flex-wrap gap-2">
-              {hotAPIs.map((a) => (
-                <button
-                  key={a.api_slug}
-                  onClick={() => selectAPI(a)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                    detail?.api_slug === a.api_slug
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700'
-                  }`}
-                >
-                  {a.api_name}
-                  <span className="ml-1 text-slate-400">{a.stats.total}</span>
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-xs text-slate-400">按首字母浏览</p>
+              {(activeLetter || activeStage) && (
+                <button onClick={clearFilters} className="text-xs text-blue-600 hover:underline">
+                  重置筛选
                 </button>
-              ))}
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {LETTERS.map((letter) => {
+                const count = letterCounts.get(letter) || 0
+                const active = activeLetter === letter
+                return (
+                  <button
+                    key={letter}
+                    onClick={() => {
+                      setActiveLetter(active ? null : letter)
+                      setViewMode('browse')
+                      setDetail(null)
+                      setDetailError(null)
+                    }}
+                    disabled={count === 0}
+                    className={`relative min-w-[28px] rounded px-1.5 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? 'bg-blue-600 text-white'
+                        : count > 0
+                          ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          : 'cursor-not-allowed bg-slate-50 text-slate-300'
+                    }`}
+                    title={`${letter}: ${count} 个 API`}
+                  >
+                    {letter}
+                    {count > 0 && !active && (
+                      <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-slate-300 text-[8px] text-white">
+                        {count > 99 ? '∞' : count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* 生命周期阶段筛选 */}
+          <div>
+            <p className="mb-1.5 text-xs text-slate-400">按生命周期阶段筛选</p>
+            <div className="flex flex-wrap gap-2">
+              {STAGES.map((stage) => {
+                const count = stageCounts.get(stage) || 0
+                const active = activeStage === stage
+                return (
+                  <button
+                    key={stage}
+                    onClick={() => {
+                      setActiveStage(active ? null : stage)
+                      setViewMode('browse')
+                      setDetail(null)
+                      setDetailError(null)
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                      active
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                    }`}
+                  >
+                    {STAGE_LABEL[stage] || stage}
+                    <span className="ml-1 text-slate-400">{count.toLocaleString()}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* 浏览模式：分页列表 */}
+      {viewMode === 'browse' && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FlaskConical className="h-5 w-5 text-blue-600" />
+                活性成分列表
+                {activeLetter && <span className="text-sm font-normal text-slate-400">· 字母 {activeLetter}</span>}
+                {activeStage && (
+                  <span className="text-sm font-normal text-slate-400">
+                    · {STAGE_LABEL[activeStage] || activeStage}
+                  </span>
+                )}
+              </CardTitle>
+              <span className="text-xs text-slate-400">
+                共 {filteredList.length.toLocaleString()} 个 · 第 {page + 1}/{Math.max(1, totalPages)} 页
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {filteredList.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-16 text-slate-400">
+                <FlaskConical className="h-10 w-10" />
+                <p className="text-sm">暂无符合条件的 API</p>
+                <button onClick={clearFilters} className="text-xs text-blue-600 hover:underline">
+                  清除筛选
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="max-h-[520px] overflow-auto rounded-md border border-slate-100">
+                  <table className="w-full border-collapse">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">活性成分</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">产品数</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">生命周期</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">首仿时滞</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">原研企业</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedList.map((a) => (
+                        <tr
+                          key={a.api_slug}
+                          onClick={() => selectAPI(a)}
+                          className="cursor-pointer border-t border-slate-100 hover:bg-blue-50/50"
+                        >
+                          <td className="px-3 py-2 text-sm font-medium text-blue-700">{a.api_name}</td>
+                          <td className="px-3 py-2 text-sm text-slate-600">{a.stats.total}</td>
+                          <td className="px-3 py-2">
+                            <span
+                              className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                              style={{
+                                backgroundColor: `${COLORS[a.lifecycle_stage] || '#94a3b8'}15`,
+                                color: COLORS[a.lifecycle_stage] || '#94a3b8',
+                              }}
+                            >
+                              {STAGE_LABEL[a.lifecycle_stage] || a.lifecycle_stage}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-sm text-slate-600">
+                            {a.generic_lag_years != null ? `${a.generic_lag_years} 年` : '—'}
+                          </td>
+                          <td className="px-3 py-2 text-sm text-slate-600 max-w-[200px] truncate">
+                            {a.originator || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 分页控件 */}
+                {totalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <button
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" /> 上一页
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(10, totalPages) }, (_, i) => {
+                        // 显示当前页附近的页码
+                        let p: number
+                        if (totalPages <= 10) {
+                          p = i
+                        } else if (page < 5) {
+                          p = i
+                        } else if (page > totalPages - 6) {
+                          p = totalPages - 10 + i
+                        } else {
+                          p = page - 4 + i
+                        }
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => setPage(p)}
+                            className={`min-w-[28px] rounded px-2 py-1 text-xs ${
+                              p === page ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {p + 1}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      下一页 <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {loadingDetail && (
         <div className="flex items-center justify-center gap-2 py-16 text-slate-500">
@@ -211,10 +467,13 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
       )}
       {detailError && <p className="py-10 text-center text-red-600">API 详情加载失败：{detailError}</p>}
 
-      {!loadingDetail && !detailError && !detail && (
+      {viewMode === 'search' && !loadingDetail && !detailError && !detail && query.trim() && (
         <div className="flex flex-col items-center gap-2 py-16 text-slate-400">
-          <FlaskConical className="h-10 w-10" />
-          <p className="text-sm">搜索或点击上方热门 API，查看成分透视</p>
+          <Search className="h-10 w-10" />
+          <p className="text-sm">搜索「{query}」无结果，请尝试其他关键词</p>
+          <button onClick={clearFilters} className="text-xs text-blue-600 hover:underline">
+            返回浏览全部
+          </button>
         </div>
       )}
 
@@ -361,6 +620,15 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
               <p className="mt-2 text-xs text-slate-400">点击行查看药品详情。</p>
             </CardContent>
           </Card>
+
+          <div className="flex justify-center">
+            <button
+              onClick={clearFilters}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              ← 返回浏览全部 API
+            </button>
+          </div>
         </>
       )}
 
