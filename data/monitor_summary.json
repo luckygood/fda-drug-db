@@ -1,0 +1,191 @@
+{
+  "generated_at": "2026-07-20T14:11:11+08:00",
+  "ob_version": "2026-07-18",
+  "shortages_version": "2026-07-18",
+  "pb_version": "2026-06",
+  "site_deployed": true,
+  "patent": {
+    "window_months": 36,
+    "ingredients": 504,
+    "patents": 1452,
+    "tentative_andas": 724,
+    "top": [
+      {
+        "ingredient": "CARFILZOMIB",
+        "brand": "KYPROLIS",
+        "earliest_expiry": "2026-07-20",
+        "days_left": 0,
+        "n_patents": 2,
+        "tentative": 4
+      },
+      {
+        "ingredient": "TEMSIROLIMUS",
+        "brand": "TORISEL",
+        "earliest_expiry": "2026-07-20",
+        "days_left": 0,
+        "n_patents": 1,
+        "tentative": 0
+      },
+      {
+        "ingredient": "LIDOCAINE HYDROCHLORIDE",
+        "brand": "AKTEN",
+        "earliest_expiry": "2026-07-24",
+        "days_left": 4,
+        "n_patents": 1,
+        "tentative": 0
+      },
+      {
+        "ingredient": "OPICAPONE",
+        "brand": "ONGENTYS",
+        "earliest_expiry": "2026-07-26",
+        "days_left": 6,
+        "n_patents": 5,
+        "tentative": 0
+      },
+      {
+        "ingredient": "SUGAMMADEX SODIUM",
+        "brand": "BRIDION",
+        "earliest_expiry": "2026-07-27",
+        "days_left": 7,
+        "n_patents": 1,
+        "tentative": 1
+      },
+      {
+        "ingredient": "ARIPIPRAZOLE",
+        "brand": "ABILIFY",
+        "earliest_expiry": "2026-07-28",
+        "days_left": 8,
+        "n_patents": 9,
+        "tentative": 5
+      },
+      {
+        "ingredient": "SIMEPREVIR SODIUM",
+        "brand": "OLYSIO",
+        "earliest_expiry": "2026-07-28",
+        "days_left": 8,
+        "n_patents": 7,
+        "tentative": 0
+      },
+      {
+        "ingredient": "TREPROSTINIL DIOLAMINE",
+        "brand": "ORENITRAM",
+        "earliest_expiry": "2026-07-30",
+        "days_left": 10,
+        "n_patents": 5,
+        "tentative": 0
+      }
+    ]
+  },
+  "supply": {
+    "high_risk": 32,
+    "medium_risk": 189,
+    "watch": 936,
+    "top_high": [
+      {
+        "ingredient": "DEXTROSE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; SODIUM ACETATE; SODIUM CHLORIDE; SODIUM GLUCONATE",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-17",
+        "sole_supplier": "OTSUKA ICU MEDCL"
+      },
+      {
+        "ingredient": "DEXTROSE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; POTASSIUM PHOSPHATE, DIBASIC; SODIUM ACETATE",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-17",
+        "sole_supplier": "B BRAUN"
+      },
+      {
+        "ingredient": "CALCIUM CHLORIDE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; SODIUM ACETATE; SODIUM CHLORIDE",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-17",
+        "sole_supplier": "HOSPIRA"
+      },
+      {
+        "ingredient": "AMINO ACIDS; CALCIUM CHLORIDE; DEXTROSE; MAGNESIUM SULFATE; POTASSIUM CHLORIDE; SODIUM ACETATE; SODIUM GLYCEROPHOSPHATE; SOYBEAN OIL",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-17",
+        "sole_supplier": "FRESENIUS KABI USA"
+      },
+      {
+        "ingredient": "MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; POTASSIUM PHOSPHATE, MONOBASIC; SODIUM ACETATE; SODIUM CHLORIDE; SODIUM GLUCONATE; SODIUM PHOSPHATE, DIBASIC, HEPTAHYDRATE",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-17",
+        "sole_supplier": "B BRAUN"
+      },
+      {
+        "ingredient": "AMINO ACIDS; CALCIUM CHLORIDE; DEXTROSE; MAGNESIUM CHLORIDE; POTASSIUM PHOSPHATE, DIBASIC; SODIUM ACETATE; SODIUM CHLORIDE",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-17",
+        "sole_supplier": "BAXTER HLTHCARE"
+      },
+      {
+        "ingredient": "ATROPINE SULFATE; DIFENOXIN HYDROCHLORIDE",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-16",
+        "sole_supplier": "LEGACY"
+      },
+      {
+        "ingredient": "CALCIUM CHLORIDE; DEXTROSE; GLUTATHIONE DISULFIDE; MAGNESIUM CHLORIDE; POTASSIUM CHLORIDE; SODIUM BICARBONATE; SODIUM CHLORIDE; SODIUM PHOSPHATE",
+        "status": "Currently in Shortage",
+        "update_date": "2026-07-16",
+        "sole_supplier": "ALCON"
+      }
+    ]
+  },
+  "bio": {
+    "ref_products": 20,
+    "biosimilar_blas": 90,
+    "interchangeable": 45,
+    "top": [
+      {
+        "ref": "DENOSUMAB",
+        "brands": "Prolia/Xgeva",
+        "n_biosim": 11,
+        "n_interch": 11
+      },
+      {
+        "ref": "ADALIMUMAB",
+        "brands": "Humira",
+        "n_biosim": 10,
+        "n_interch": 8
+      },
+      {
+        "ref": "USTEKINUMAB",
+        "brands": "Stelara",
+        "n_biosim": 10,
+        "n_interch": 10
+      },
+      {
+        "ref": "PEGFILGRASTIM",
+        "brands": "Neulasta/Neulasta Onpro",
+        "n_biosim": 8,
+        "n_interch": 0
+      },
+      {
+        "ref": "AFLIBERCEPT",
+        "brands": "Eylea/Eylea HD",
+        "n_biosim": 6,
+        "n_interch": 2
+      },
+      {
+        "ref": "BEVACIZUMAB",
+        "brands": "Avastin",
+        "n_biosim": 6,
+        "n_interch": 0
+      },
+      {
+        "ref": "TRASTUZUMAB",
+        "brands": "Herceptin",
+        "n_biosim": 6,
+        "n_interch": 0
+      },
+      {
+        "ref": "FILGRASTIM",
+        "brands": "Neupogen",
+        "n_biosim": 5,
+        "n_interch": 0
+      }
+    ]
+  },
+  "failures": [],
+  "summary": "橙皮书 2026-07-18：未来 36 个月 504 个成分、1452 件专利到期；短缺高风险 32 个（单一来源）；紫皮书 2026-06：20 个参比制剂、90 个 351(k) BLA。全部环节正常。"
+}
