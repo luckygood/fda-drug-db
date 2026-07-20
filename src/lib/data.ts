@@ -436,6 +436,184 @@ export const loadWithdrawn = makeLoader<Withdrawn>('withdrawn.json', 'withdrawn.
 export const loadGenericLag = makeLoader<GenericLag>('generic_lag.json', 'generic_lag.json')
 export const loadBiologics = makeLoader<Biologics>('biologics.json', 'biologics.json')
 
+// ---- 专利与供应（第三梯队：橙皮书 / 短缺 / 紫皮书）数据 ----
+
+export interface PatentCliff {
+  generated_at: string
+  ob_version: string
+  source: string
+  window: { start: string; end: string; months: number }
+  kpis: {
+    cliff_ingredients: number
+    cliff_patents: number
+    cliff_onmarket_products: number
+    excl_rows: number
+    tentative_total_appls: number
+  }
+  patent_cliff: {
+    ingredient: string
+    brands: string[]
+    applicants: string[]
+    n_appls: number
+    earliest_expiry: string
+    latest_expiry: string
+    n_patents_window: number
+    n_patents_total: number
+    ds_latest: string | null
+    onmarket_products: number
+    onmarket_appls: number
+    tentative_andas: number
+    appl_nos: string[]
+  }[]
+  exclusivity_cliff: {
+    ingredient: string
+    brand: string
+    code: string
+    expiry: string
+    appl_no: string
+    tentative_andas: number
+  }[]
+  tentative_top: { ingredient: string; n: number; onmarket_products: number }[]
+  timelines: Record<
+    string,
+    {
+      label: string
+      appl_no: string
+      brand: string
+      patents: {
+        product_no: string
+        patent_no: string
+        expiry: string
+        ds: boolean
+        dp: boolean
+        use_code: string
+      }[]
+      exclusivity: { code: string; expiry: string }[]
+    }
+  >
+}
+
+export interface SupplyRisk {
+  generated_at: string
+  shortages_version: string
+  fetch_date: string
+  source: string
+  kpis: {
+    shortage_records: number
+    current_records: number
+    current_ingredients: number
+    high_risk: number
+    medium_risk: number
+    watch: number
+    shortage_multi: number
+    single_source_count: number
+    unmatched_records: number
+  }
+  high: {
+    ingredient: string
+    n_presentations: number
+    companies: string[]
+    n_companies: number
+    dosage_forms: string[]
+    therapeutic_category: string[]
+    since: string
+    latest_update: string
+    onmarket_products: number
+    single_source: boolean
+  }[]
+  medium: {
+    ingredient: string
+    last_status: string
+    latest_update: string
+    n_records: number
+    single_source: boolean
+    onmarket_products: number
+  }[]
+  watch: { ingredient: string; appl_no: string; brand: string; onmarket_products: number }[]
+  shortage_multi: {
+    ingredient: string
+    n_presentations: number
+    companies: string[]
+    n_companies: number
+    dosage_forms: string[]
+    therapeutic_category: string[]
+    since: string
+    latest_update: string
+    onmarket_products: number
+    single_source: boolean
+  }[]
+  current_details: {
+    generic_name: string
+    company_name: string
+    dosage_form: string
+    availability: string
+    therapeutic_category: string[]
+    initial_posting_date: string
+    update_date: string
+    matched_ingredient: string
+    single_source: boolean
+  }[]
+}
+
+export interface Biosimilars {
+  generated_at: string
+  pb_version: string
+  fetch_date: string
+  source: string
+  window: { start: string; end: string; months: number }
+  kpis: {
+    pb_products: number
+    pb_blas: number
+    products_351a: number
+    products_biosimilar: number
+    products_interchangeable: number
+    blas_biosimilar: number
+    blas_interchangeable: number
+    rp_with_biosimilars: number
+    rp_excl_in_window: number
+    crosscheck_db_bla: number
+    crosscheck_db_bla_761: number
+  }
+  reference_products: {
+    ref_proper_name: string
+    ref_brands: string[]
+    ref_applicants: string[]
+    ref_bla_numbers: string[]
+    center: string[]
+    marketing_status: string[]
+    date_of_first_licensure: string | null
+    ref_exclusivity_exp: string | null
+    orphan_exclusivity_exp: string | null
+    patent_list_provided: boolean
+    n_biosimilar_blas: number
+    n_interchangeable_blas: number
+    n_products: number
+    first_biosimilar_approval: string | null
+    first_interchangeable_exclusivity_exp: string | null
+    biosimilars: {
+      brand: string
+      proper_name: string
+      applicant: string
+      bla_number: string
+      license_type: string
+      marketing_status: string
+      approval_date: string | null
+    }[]
+  }[]
+  exclusivity_window: {
+    ref_proper_name: string
+    ref_brands: string[]
+    kind: string
+    expiry: string
+    n_biosimilar_blas: number
+    n_interchangeable_blas: number
+  }[]
+}
+
+export const loadPatentCliff = makeLoader<PatentCliff>('patent_cliff.json', 'patent_cliff.json')
+export const loadSupplyRisk = makeLoader<SupplyRisk>('supply_risk.json', 'supply_risk.json')
+export const loadBiosimilars = makeLoader<Biosimilars>('biosimilars.json', 'biosimilars.json')
+
 // ---- 中国药企出海数据 ----
 
 export interface ChinaPharma {

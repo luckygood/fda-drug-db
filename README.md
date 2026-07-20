@@ -22,6 +22,7 @@
 | **企业画像** | 2,037 家归一化企业的档案：申请构成、获批时间线、NME 列表、疾病覆盖、在售产品；支持名称变体合并与中文别名检索 |
 | **出海观察** | 中国药企 FDA 获批全景：62 个识别实体的申请构成与时间线、创新药（NME）专栏、企业排行、在途管线（暂定批准聚合） |
 | **安全与市场** | 四个专题：黑框警告挖掘（年代携带率 / 主题分类 / 带黑框 NME）、撤市全景（23,389 产品）、首仿时滞（中位 14.5 年）、生物制剂崛起（BLA 份额曲线） |
+| **专利与供应** | 三个外部数据源专题：专利悬崖（橙皮书 36 个月到期榜：504 成分 / 1,455 专利 / 独占期到期 / 暂定批准积压 Top 30 / ELIQUIS·IBRANCE 时间线）、供应风险（短缺 × 单一来源交叉：高风险 32 / 中 189 / 观察 936 / 当前短缺明细）、生物类似药（紫皮书：20 个参比分子覆盖 90 个 351(k) BLA、可互换格局、独占期事件） |
 | **全局搜索** | 页头统一搜索框，一站式匹配药品（药名 / 成分）、疾病（中文 / 英文 / 同义词）、企业（归一名 / 中文别名 / 原始变体名） |
 
 ## 实体互链网络
@@ -146,6 +147,27 @@
 - **生成**：`export_safety_market.py`
 - **结构**：`yearly`（1985 起 BLA 获批数 / 占 NDA+BLA 比例 / BLA 类 NME 数）、`top_sponsors`（BLA 持证机构 Top 15，含中文别名）、`latest_share`（最新年份份额 28.3%）
 
+### patent_cliff.json（332 KB，专利与供应页）
+
+- **生成**：`export_orangebook.py`（读 openFDA `drug/orangebook` 端点全量数据，48,502 条，字段与 FDA 橙皮书月度数据一一对应；数据版本 **2026-07-18**，下载于 2026-07-19）
+- **结构**：`window`（2026-07-19 ~ 2029-07-19，36 个月）、`kpis`（504 个到期成分 / 1,455 件窗口专利 / 涉及在售产品 7,267 个 / 全库暂定批准 ANDA 724 个）、`patent_cliff`（504 行，按最早到期日升序：成分 / 品牌 / 申请号 / 最早与最晚专利到期 / 窗口专利数 / 在售产品数 / 暂定 ANDA 数）、`exclusivity_cliff`（1,292 行独占期到期：NCE / ODE 等代码 + 到期日）、`tentative_top`（暂定批准积压 Top 30）、`timelines`（ELIQUIS / IBRANCE 明星药物专利时间线，含 *PED 儿科延长与独占期）
+- **口径**：专利按 产品×专利×用途码 计数（同一专利挂多产品时重复计）；`*PED` 后缀 = 儿科独占延长期（+6 个月）；`ds_latest` = 最晚到期的药物物质（compound）专利。**专利到期 ≠ 仿制药上市**（还受诉讼和解、独占期、REMS 约束）
+- **锚点校验**：APIXABAN（ELIQUIS）暂定 ANDA = 9 件、PALBOCICLIB（IBRANCE）= 9 件 ✓；ELIQUIS 专利 6967208 → 2026-11-21、9326945 → 2031-02-24 ✓
+
+### supply_risk.json（245 KB，专利与供应页）
+
+- **生成**：`export_supply.py`（读 openFDA `drug/shortages` 端点全量数据，1,614 条，字段与 FDA 短缺数据库一一对应；数据版本 **2026-07-18**）
+- **结构**：`kpis`（当前短缺 1,158 条记录 / 138 成分；高风险 32 / 中风险 189 / 多源短缺 106 / 单一来源观察池 936；全库单一来源成分 1,005 个与深度挖掘页同口径；未匹配记录 131 条）、`high`（当前短缺 × 在售仅单一来源）、`medium`（历史短缺或 To Be Discontinued）、`shortage_multi`（当前短缺但多源持证）、`watch`（936 个单一来源成分观察池）、`current_details`（当前短缺明细前 120 条）
+- **匹配口径**：短缺记录 → Drugs@FDA 成分，经 openfda.substance_name 精确匹配 + 复方成分回退 + 通用名去剂型词回退（命中率约 93.6%）；"单一来源"= 标准化成分在售产品仅涉及 1 个申请号
+- **风险分层**：高 = 短缺中且单一来源（断供即断药）；中 = 曾短缺/将停产；观察 = 单一来源但当前无短缺记录
+
+### biosimilars.json（46 KB，专利与供应页）
+
+- **生成**：`export_purplebook.py`（读 FDA 紫皮书月度 CSV 官方下载，**2026-06** 版，2,205 个产品行 / 847 个 BLA）
+- **结构**：`kpis`（351(a) 原研 1,977 行 / 351(k) 类似药 100 行 / 可互换 128 行；去重后 351(k) BLA 90 个：类似药 49 + 可互换 45，含同 BLA 双列名；有类似药的参比分子 20 个）、`reference_products`（20 个参比分子全景：参比品牌 / BLA / 类似药与可互换 BLA 数 / 首个类似药获批日 / 参比独占期到期 / BPCIA 专利清单提供标记 / 各类似药明细）、`exclusivity_window`（36 个月内生物药独占期事件）
+- **口径**：按参比分子（Ref. Product Proper Name）归并，BLA 按申请号去重；DENOSUMAB 11 个类似药 BLA 居首，ADALIMUMAB / USTEKINUMAB 各 10 个
+- **交叉校验**：本库 Drugs@FDA 收 BLA 478 个（761xxx 系列 269 个）少于紫皮书 847 个——Drugs@FDA 仅收 CDER 管辖部分，CBER 及过渡期产品不在其列，属覆盖范围差异
+
 ## 关键数据口径
 
 - **NME（新分子实体）**：`submissions` 表中 `submission_type='ORIG' AND submission_status='AP' AND submission_class LIKE 'Type 1%'` 的申请；获批日 = 该申请最早的 ORIG+AP 日期（`MIN(status_date)` 按 appl_no 去重）。全库共 1,873 个
@@ -184,6 +206,13 @@ python export_mining.py         # mining.json（含注册生命周期）
 python export_companies.py      # companies/*.json / sponsor_map.json
 python export_china.py          # china_pharma.json / disease_network.json
 python export_safety_market.py  # safety_boxed/withdrawn/generic_lag/biologics.json
+# 3b. 外部数据源（橙皮书 / 短缺 / 紫皮书 → fda_aux.db + 三个 JSON）
+#     需先下载原始数据到 data_lake/（见 data_lake/MANIFEST.md）：
+#     openFDA drug/orangebook 与 drug/shortages 全量 zip（api.fda.gov/download.json 清单内），
+#     紫皮书月度 CSV（accessdata.fda.gov/drugsatfda_docs/PurpleBook/...）
+python export_orangebook.py     # patent_cliff.json（36 月专利悬崖 + 独占期 + 暂定批准）
+python export_supply.py         # supply_risk.json（短缺 × 单一来源风险分层）
+python export_purplebook.py     # biosimilars.json（参比制剂 × 351(k) 竞争格局）
 # 4. 构建与部署
 cd fda-drug-web && npm run build
 ```

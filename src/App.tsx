@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert } from 'lucide-react'
+import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
@@ -8,10 +8,11 @@ import MiningPage from './pages/MiningPage'
 import CompaniesPage from './pages/CompaniesPage'
 import ChinaPage from './pages/ChinaPage'
 import SafetyMarketPage from './pages/SafetyMarketPage'
+import PatentSupplyPage from './pages/PatentSupplyPage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
 
-type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety'
+type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent'
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; applicationNumber: string; from: Page }
@@ -30,6 +31,7 @@ export default function App() {
     { key: 'companies', label: '企业画像', icon: Building2 },
     { key: 'china', label: '出海观察', icon: Ship },
     { key: 'safety', label: '安全与市场', icon: ShieldAlert },
+    { key: 'patent', label: '专利与供应', icon: Landmark },
   ]
 
   const openDetail = (applicationNumber: string, from: Page) =>
@@ -59,7 +61,7 @@ export default function App() {
                 FDA 获批药品数据库
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                数据来源：Drugs@FDA + openFDA 药品说明书 · 数据截至 2026-07-16
+                数据来源：Drugs@FDA + openFDA（说明书 / 橙皮书 / 短缺库）+ 紫皮书 · 数据截至 2026-07-18
               </p>
             </div>
             {/* 全局统一搜索框（药物/疾病/企业一站式） */}
@@ -126,6 +128,8 @@ export default function App() {
           />
         ) : page === 'safety' ? (
           <SafetyMarketPage onSelectDrug={(appNo) => openDetail(appNo, 'safety')} />
+        ) : page === 'patent' ? (
+          <PatentSupplyPage onSelectDrug={(appNo) => openDetail(appNo, 'patent')} />
         ) : page === 'diseases' ? (
           <DiseasesPage
             pendingDisease={pendingDisease}
