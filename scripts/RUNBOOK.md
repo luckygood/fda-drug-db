@@ -1,6 +1,6 @@
 # RUNBOOK · 三源月更管线执行手册
 
-给定时任务（cron job）执行代理看的运行手册。管线 = 抓取三源 → 导出 JSON → 监控摘要 → 构建 → 部署 gh-pages。
+给定时任务（cron job）执行代理看的运行手册。管线 = 抓取三源 → 导出 JSON → **API 数据生成** → 监控摘要 → 构建 → 部署 gh-pages。
 
 ## 0. 一句话用法
 
@@ -30,10 +30,11 @@ echo "exit=$?"   # 0 全成功 / 2 部分失败 / 1 全部失败
 |---|---|---|---|
 | ① 抓取 | `python3 fda-drug-web/scripts/fetch_sources.py` | `data_lake/orangebook/drug-orangebook-0001-of-0001.json`、`data_lake/shortages/drug-shortages-0001-of-0001.json`、`data_lake/purplebook/purplebook-search-<Month>-<YYYY>-data-download.csv`（新版才落盘）、`data_lake/fetch_report.json` | 单源失败保留旧文件，failures 记录，退出码 2；全失败退出码 1 |
 | ② 导出 | `export_orangebook.py` / `export_supply.py` / `export_purplebook.py` | `public/data/{patent_cliff,supply_risk,biosimilars}.json` | 抓取失败的源跳过导出；导出失败自动回滚该 JSON 为旧版（备份在 `data_lake/.backup-json/`） |
-| ③ 摘要 | `build_monitor_summary.py` | `public/data/monitor_summary.json` | 失败记入 failures，继续 |
-| ③b | 自动提交刷新数据到 main（无变化则跳过） | main 新增 `data: 月更数据 <日期>` 提交 | 失败记 failures；此步是为防部署 checkout 还原旧数据 |
-| ④ 构建 | `cd fda-drug-web && npm run build` | `dist/`（含 `assets/index-<hash>.js`） | 失败则跳过部署，最终退出码 2 |
-| ⑤ 部署 | gh-pages 孤儿分支（脚本内） | 远端 `gh-pages` 分支强推更新 | 6 个 GitHub IP 轮换重试；全失败记 failures，退出码 2 |
+| **③ API 数据** | **`build_api_master.py`** / **`export_api_overview.py`** | **`fda_drugs.db` 中 `api_master` 表更新**；`public/data/api/{index.json,*.json,disease_matrix.json}` | 失败记入 failures，流程继续（旧 API 数据保留） |
+| ④ 摘要 | `build_monitor_summary.py` | `public/data/monitor_summary.json` | 失败记入 failures，继续 |
+| ④b | 自动提交刷新数据到 main（无变化则跳过） | main 新增 `data: 月更数据 <日期>` 提交 | 失败记 failures；此步是为防部署 checkout 还原旧数据 |
+| ⑤ 构建 | `cd fda-drug-web && npm run build` | `dist/`（含 `assets/index-<hash>.js`） | 失败则跳过部署，最终退出码 2 |
+| ⑥ 部署 | gh-pages 孤儿分支（脚本内） | 远端 `gh-pages` 分支强推更新 | 6 个 GitHub IP 轮换重试；全失败记 failures，退出码 2 |
 
 ## 3. 常见失败与处置
 
@@ -60,6 +61,8 @@ echo "exit=$?"   # 0 全成功 / 2 部分失败 / 1 全部失败
 cd "/Users/dingzhiqiang/Documents/Kimi/Workspaces/Drug on market"
 python3 fda-drug-web/scripts/fetch_sources.py          # 只抓取
 python3 fda-drug-web/scripts/export_supply.py          # 只导某一源
+python3 build_api_master.py                            # 只更新 api_master 表
+python3 export_api_overview.py                         # 只导出 API 数据
 python3 fda-drug-web/scripts/build_monitor_summary.py --extra-failure "test: 演练"
 ```
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# monthly_refresh.sh — 三源月更管线：抓取 → 导出 → 监控摘要 → 构建 → 部署 gh-pages
+# monthly_refresh.sh — 三源月更管线：抓取 → 导出 → API数据 → 监控摘要 → 构建 → 部署 gh-pages
 #
 # 幂等、可重复执行。单源失败不拖垮整体：该源保留旧数据，failures 记录，流程继续。
 # 退出码：0 = 全部成功；2 = 部分失败；1 = 全部失败（三源抓取全挂，或构建/部署失败导致无法上线）。
@@ -36,7 +36,7 @@ die_note() {  # 记录失败但继续
 
 # ---------- 步骤 ① 抓取三源 ----------
 log "==== 月更开始 ==== 工作区：$ROOT"
-log "步骤 1/5：抓取三源 → data_lake/"
+log "步骤 1/6：抓取三源 → data_lake/"
 FETCH_RC=0
 (cd "$ROOT" && "$PY" fda-drug-web/scripts/fetch_sources.py) 2>&1 | tee -a "$LOG_FILE"
 FETCH_RC=${PIPESTATUS[0]}
@@ -60,7 +60,7 @@ if [ "$FETCH_RC" -eq 1 ]; then
 fi
 
 # ---------- 步骤 ② 导出三个 JSON（带备份/回滚） ----------
-log "步骤 2/5：导出 patent_cliff / supply_risk / biosimilars"
+log "步骤 2/6：导出 patent_cliff / supply_risk / biosimilars"
 BACKUP_DIR="$STATE_DIR/.backup-json"
 mkdir -p "$BACKUP_DIR"
 cp -f "$DATA_DIR/patent_cliff.json" "$BACKUP_DIR/" 2>/dev/null || true
@@ -91,8 +91,21 @@ run_export export_orangebook.py patent_cliff.json orangebook
 run_export export_supply.py supply_risk.json shortages
 run_export export_purplebook.py biosimilars.json purplebook
 
-# ---------- 步骤 ③ 监控摘要 ----------
-log "步骤 3/5：生成 monitor_summary.json"
+# ---------- 步骤 ③ 构建 API 主表 + 导出 API 数据 ----------
+log "步骤 3/6：构建 api_master 表 + 导出 API 数据"
+if (cd "$ROOT" && "$PY" build_api_master.py) >> "$LOG_FILE" 2>&1; then
+  log "build_api_master.py 成功 → api_master 表已更新"
+else
+  die_note "build_api_master: 退出码 $?（api_master 表未更新）"
+fi
+if (cd "$ROOT" && "$PY" export_api_overview.py) >> "$LOG_FILE" 2>&1; then
+  log "export_api_overview.py 成功 → public/data/api/ 已更新"
+else
+  die_note "export_api_overview: 退出码 $?（API 数据未导出）"
+fi
+
+# ---------- 步骤 ④ 监控摘要 ----------
+log "步骤 4/6：生成 monitor_summary.json"
 EXTRA_ARGS=()
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   for f in "${FAILURES[@]}"; do EXTRA_ARGS+=(--extra-failure "$f"); done
@@ -107,7 +120,7 @@ fi
 # 保证部署后工作区与线上一致（幂等：无变化则跳过；脚本源码改动须运行前手动提交，见 RUNBOOK）
 if ! (cd "$WEB_DIR" && git diff --quiet -- public/data) 2>/dev/null; then
   if (cd "$WEB_DIR" && git add public/data/patent_cliff.json public/data/supply_risk.json \
-        public/data/biosimilars.json public/data/monitor_summary.json && \
+        public/data/biosimilars.json public/data/monitor_summary.json public/data/api && \
       git "${GIT_ID[@]}" commit -qm "data: 月更数据 $(date '+%Y-%m-%d')") >> "$LOG_FILE" 2>&1; then
     log "刷新后数据已提交到 main"
   else
@@ -115,8 +128,8 @@ if ! (cd "$WEB_DIR" && git diff --quiet -- public/data) 2>/dev/null; then
   fi
 fi
 
-# ---------- 步骤 ④ 构建 ----------
-log "步骤 4/5：npm run build"
+# ---------- 步骤 ⑤ 构建 ----------
+log "步骤 5/6：npm run build"
 BUILD_OK=0
 (cd "$WEB_DIR" && npm run build) >> "$LOG_FILE" 2>&1
 BUILD_OK=$?
@@ -125,10 +138,10 @@ if [ "$BUILD_OK" -ne 0 ]; then
   die_note "build: npm run build 退出码 $BUILD_OK"
 fi
 
-# ---------- 步骤 ⑤ 部署 gh-pages ----------
+# ---------- 步骤 ⑥ 部署 gh-pages ----------
 DEPLOY_OK=1
 if [ "$BUILD_OK" -eq 0 ]; then
-  log "步骤 5/5：部署 gh-pages 孤儿分支"
+  log "步骤 6/6：部署 gh-pages 孤儿分支"
   (
     set -e
     cd "$WEB_DIR"
@@ -162,7 +175,7 @@ if [ "$BUILD_OK" -eq 0 ]; then
     (cd "$WEB_DIR" && git checkout -f main -q && git branch -D gh-pages-tmp -q) >> "$LOG_FILE" 2>&1 || true
   fi
 else
-  log "步骤 5/5：跳过（构建失败）"
+  log "步骤 6/6：跳过（构建失败）"
 fi
 
 # 部署失败时用 site_deployed=false 重写摘要（仅本地，不推送——线上仍是上一份成功部署的摘要）
