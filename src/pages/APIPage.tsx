@@ -66,6 +66,9 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
   const [sortField, setSortField] = useState<'name' | 'products' | 'lag' | 'approval'>('products')
   const [sortDesc, setSortDesc] = useState(true)
 
+  // 快速筛选
+  const [quickFilter, setQuickFilter] = useState<'all' | 'single_source' | 'no_generic' | 'high_competition' | 'biologic'>('all')
+
   useEffect(() => {
     loadAPIIndex()
       .then(setIndex)
@@ -117,6 +120,21 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
     if (activeStage) {
       list = list.filter((a) => a.lifecycle_stage === activeStage)
     }
+    // 快速筛选
+    switch (quickFilter) {
+      case 'single_source':
+        list = list.filter((a) => a.stats.total === 1)
+        break
+      case 'no_generic':
+        list = list.filter((a) => a.generic_lag_years == null)
+        break
+      case 'high_competition':
+        list = list.filter((a) => a.stats.anda >= 5)
+        break
+      case 'biologic':
+        list = list.filter((a) => a.stats.bla > 0)
+        break
+    }
     // 排序
     list = [...list].sort((a, b) => {
       let cmp = 0
@@ -137,7 +155,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
       return sortDesc ? -cmp : cmp
     })
     return list
-  }, [index, activeLetter, activeStage, sortField, sortDesc])
+  }, [index, activeLetter, activeStage, sortField, sortDesc, quickFilter])
 
   // 分页
   const totalPages = Math.ceil(sortedList.length / PAGE_SIZE)
@@ -149,7 +167,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
   // 切换筛选或排序条件时重置页码
   useEffect(() => {
     setPage(0)
-  }, [activeLetter, activeStage, sortField, sortDesc])
+  }, [activeLetter, activeStage, sortField, sortDesc, quickFilter])
 
   // 消费跨页传入的 API 选择（需等索引加载完成）
   useEffect(() => {
@@ -191,6 +209,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
     setDetailError(null)
     setSortField('products')
     setSortDesc(true)
+    setQuickFilter('all')
   }
 
   const toggleSort = (field: typeof sortField) => {
@@ -300,7 +319,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <p className="text-xs text-slate-400">按首字母浏览</p>
-              {(activeLetter || activeStage) && (
+              {(activeLetter || activeStage || quickFilter !== 'all') && (
                 <button onClick={clearFilters} className="text-xs text-blue-600 hover:underline">
                   重置筛选
                 </button>
@@ -387,6 +406,11 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
                     · {STAGE_LABEL[activeStage] || activeStage}
                   </span>
                 )}
+                {quickFilter !== 'all' && (
+                  <span className="text-sm font-normal text-slate-400">
+                    · {quickFilter === 'single_source' ? '单一来源' : quickFilter === 'no_generic' ? '无仿制药' : quickFilter === 'high_competition' ? '高竞争' : '生物制品'}
+                  </span>
+                )}
               </CardTitle>
               <span className="text-xs text-slate-400">
                 共 {sortedList.length.toLocaleString()} 个 · 第 {page + 1}/{Math.max(1, totalPages)} 页
@@ -404,6 +428,35 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
               </div>
             ) : (
               <>
+                {/* 快速筛选栏 */}
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-slate-400">快速筛选：</span>
+                  {[
+                    { key: 'all' as const, label: '全部' },
+                    { key: 'single_source' as const, label: '单一来源' },
+                    { key: 'no_generic' as const, label: '无仿制药' },
+                    { key: 'high_competition' as const, label: '高竞争（≥5 ANDA）' },
+                    { key: 'biologic' as const, label: '生物制品' },
+                  ].map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => {
+                        setQuickFilter(f.key)
+                        setViewMode('browse')
+                        setDetail(null)
+                        setDetailError(null)
+                      }}
+                      className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                        quickFilter === f.key
+                          ? 'border-blue-300 bg-blue-50 text-blue-700'
+                          : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* 排序栏 */}
                 <div className="mb-3 flex flex-wrap items-center gap-3">
                   <span className="text-xs text-slate-400">排序：</span>
