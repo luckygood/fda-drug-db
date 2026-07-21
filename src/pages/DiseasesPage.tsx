@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import EChart from '@/components/EChart'
+import DiseasePubMedPanel from '@/components/DiseasePubMedPanel'
 import DrugSummaryCards from '@/components/DrugSummaryCards'
 import { StatusBadge, TypeBadge } from '@/components/StatusBadge'
 import {
@@ -291,6 +292,11 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
             </CardHeader>
             <CardContent>{timelineOption && <EChart option={timelineOption} height={260} />}</CardContent>
           </Card>
+
+          {/* PubMed 研究洞察（试点疾病） */}
+          {selected.slug === 'iga-nephropathy' && (
+            <DiseasePubMedPanel slug={selected.slug} approvalsByYear={detail.approvals_by_year} />
+          )}
 
           {/* 药物全景表 */}
           <Card>
