@@ -294,7 +294,7 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
           </Card>
 
           {/* PubMed 研究洞察（试点疾病） */}
-          {selected.slug === 'iga-nephropathy' && (
+          {['atopic-dermatitis', 'iga-nephropathy'].includes(selected.slug) && (
             <DiseasePubMedPanel slug={selected.slug} approvalsByYear={detail.approvals_by_year} />
           )}
 
