@@ -26,8 +26,10 @@ interface PubmedStat {
   disease_slug: string
   year: number
   total: number
+  clinical: number
   rct: number
   review: number
+  meta: number
   updated_at: string
 }
 
@@ -48,10 +50,11 @@ interface DiseasePubMedPanelProps {
   approvalsByYear?: Record<string, number>
 }
 
-/** pubtype 徽章配色 */
+/** pubtype 徽章配色：Clinical Trial/RCT 蓝、Meta/系统评价 紫、Review 绿 */
 function pubtypeBadgeCls(t: string): string {
-  if (/randomized|controlled trial/i.test(t)) return 'bg-blue-50 text-blue-700 border-blue-200'
-  if (/review|meta-analysis|systematic/i.test(t)) return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (/meta-analysis|systematic review/i.test(t)) return 'bg-violet-50 text-violet-700 border-violet-200'
+  if (/randomized|controlled trial|clinical trial/i.test(t)) return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (/review/i.test(t)) return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   return 'bg-slate-100 text-slate-600 border-slate-200'
 }
 
@@ -86,34 +89,42 @@ export default function DiseasePubMedPanel({ slug, approvalsByYear }: DiseasePub
     }
   }, [slug])
 
-  // 近 20 年趋势（与 FDA 获批数对照）
+  // 研究热度趋势（2024–2026，与 FDA 获批数对照）
   const trendOption = useMemo((): EChartsOption | null => {
     if (!stats || stats.length === 0) return null
-    // 已按 year.asc 排序，取最近 20 个年份
-    const rows = stats.slice(-20)
-    if (rows.length === 0) return null
+    const rows = stats // 已按 year.asc 排序
     const years = rows.map((r) => String(r.year))
+    const bar = (name: string, data: number[]) => ({
+      name,
+      type: 'bar' as const,
+      barMaxWidth: 22,
+      itemStyle: { borderRadius: [3, 3, 0, 0] as [number, number, number, number] },
+      label: { show: true, position: 'top' as const, fontSize: 10, color: '#64748b' },
+      data,
+    })
     const series: NonNullable<EChartsOption['series']> = [
-      { name: '文献总量', type: 'line', smooth: true, data: rows.map((r) => r.total) },
-      { name: 'RCT', type: 'line', smooth: true, data: rows.map((r) => r.rct) },
-      { name: '综述', type: 'line', smooth: true, data: rows.map((r) => r.review) },
+      bar('临床研究', rows.map((r) => r.clinical)),
+      bar('RCT', rows.map((r) => r.rct)),
+      bar('综述', rows.map((r) => r.review)),
+      bar('Meta 分析', rows.map((r) => r.meta)),
     ]
     const hasApprovals = !!approvalsByYear && Object.keys(approvalsByYear).length > 0
     if (hasApprovals) {
       series.push({
         name: 'FDA 获批数',
-        type: 'bar',
+        type: 'line',
         yAxisIndex: 1,
-        barMaxWidth: 14,
-        itemStyle: { color: '#94a3b8', opacity: 0.55, borderRadius: [2, 2, 0, 0] },
+        symbolSize: 7,
+        lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
+        itemStyle: { color: '#94a3b8' },
         data: years.map((y) => approvalsByYear![y] ?? 0),
       })
     }
     return {
-      color: ['#2563eb', '#d97706', '#059669', '#94a3b8'],
+      color: ['#2563eb', '#d97706', '#059669', '#7c3aed', '#94a3b8'],
       tooltip: { trigger: 'axis' },
       legend: { top: 0, textStyle: { color: '#475569' } },
-      grid: { left: 44, right: hasApprovals ? 44 : 20, top: 34, bottom: 26 },
+      grid: { left: 44, right: hasApprovals ? 44 : 20, top: 36, bottom: 26 },
       xAxis: {
         type: 'category', data: years,
         axisLine: { lineStyle: { color: '#cbd5e1' } },
@@ -137,19 +148,28 @@ export default function DiseasePubMedPanel({ slug, approvalsByYear }: DiseasePub
     }
   }, [stats, approvalsByYear])
 
-  // 证据结构：累计 RCT / 综述 / 其他
-  const evidence = useMemo(() => {
+  // 最新一年文献总量（标题区小字说明）
+  const latestTotal = useMemo(() => {
     if (!stats || stats.length === 0) return null
-    const rct = stats.reduce((a, s) => a + (s.rct || 0), 0)
-    const review = stats.reduce((a, s) => a + (s.review || 0), 0)
-    const total = stats.reduce((a, s) => a + (s.total || 0), 0)
-    if (total === 0) return null
-    const other = Math.max(total - rct - review, 0)
-    const pct = (n: number) => Math.round((n / total) * 1000) / 10
-    return { total, rct, review, other, rctPct: pct(rct), reviewPct: pct(review), otherPct: pct(other) }
+    return stats[stats.length - 1]
   }, [stats])
 
-  // 近 90 天文献（以数据拉取时刻为基准）
+  // 证据结构：近三年累计 临床研究 / 综述+Meta / 其他
+  const evidence = useMemo(() => {
+    if (!stats || stats.length === 0) return null
+    const clinical = stats.reduce((a, s) => a + (s.clinical || 0), 0)
+    const reviewMeta = stats.reduce((a, s) => a + (s.review || 0) + (s.meta || 0), 0)
+    const total = stats.reduce((a, s) => a + (s.total || 0), 0)
+    if (total === 0) return null
+    const other = Math.max(total - clinical - reviewMeta, 0)
+    const pct = (n: number) => Math.round((n / total) * 1000) / 10
+    return {
+      total, clinical, reviewMeta, other,
+      clinicalPct: pct(clinical), reviewMetaPct: pct(reviewMeta), otherPct: pct(other),
+    }
+  }, [stats])
+
+  // 近 90 天文献（以数据拉取时刻为基准；库中仅临床研究+综述类）
   const recent90 = useMemo(() => {
     if (!recent || fetchedAt === null) return []
     const cutoff = fetchedAt - 90 * 24 * 3600 * 1000
@@ -171,7 +191,7 @@ export default function DiseasePubMedPanel({ slug, approvalsByYear }: DiseasePub
           PubMed 研究洞察
         </CardTitle>
         <p className="text-xs text-slate-400">
-          数据来源：PubMed（NCBI）· 按疾病主题词检索 · 试点疾病
+          数据来源：PubMed（NCBI）· 按疾病主题词检索 · 聚焦临床研究与综述证据 · 试点疾病
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -203,7 +223,14 @@ export default function DiseasePubMedPanel({ slug, approvalsByYear }: DiseasePub
           <>
             {/* 研究热度趋势 */}
             <div>
-              <h3 className="mb-2 text-sm font-medium text-slate-600">研究热度趋势（近 20 年）</h3>
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="text-sm font-medium text-slate-600">研究热度趋势（2024–2026）</h3>
+                {latestTotal && (
+                  <p className="text-xs text-slate-400">
+                    {latestTotal.year} 年该疾病全部 PubMed 文献 {latestTotal.total.toLocaleString()} 篇
+                  </p>
+                )}
+              </div>
               {trendOption && <EChart option={trendOption} height={280} />}
             </div>
 
@@ -211,21 +238,21 @@ export default function DiseasePubMedPanel({ slug, approvalsByYear }: DiseasePub
             {evidence && (
               <div>
                 <h3 className="mb-2 text-sm font-medium text-slate-600">
-                  证据结构（累计 {evidence.total.toLocaleString()} 篇）
+                  证据结构（近三年累计 {evidence.total.toLocaleString()} 篇）
                 </h3>
                 <div className="flex h-4 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div className="bg-blue-600" style={{ width: `${evidence.rctPct}%` }} title={`RCT ${evidence.rctPct}%`} />
-                  <div className="bg-emerald-600" style={{ width: `${evidence.reviewPct}%` }} title={`综述 ${evidence.reviewPct}%`} />
+                  <div className="bg-blue-600" style={{ width: `${evidence.clinicalPct}%` }} title={`临床研究 ${evidence.clinicalPct}%`} />
+                  <div className="bg-violet-600" style={{ width: `${evidence.reviewMetaPct}%` }} title={`综述/Meta ${evidence.reviewMetaPct}%`} />
                   <div className="bg-slate-300" style={{ width: `${evidence.otherPct}%` }} title={`其他 ${evidence.otherPct}%`} />
                 </div>
                 <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-600">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block h-2.5 w-2.5 rounded-sm bg-blue-600" />
-                    RCT {evidence.rct.toLocaleString()}（{evidence.rctPct}%）
+                    临床研究 {evidence.clinical.toLocaleString()}（{evidence.clinicalPct}%）
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-600" />
-                    综述 {evidence.review.toLocaleString()}（{evidence.reviewPct}%）
+                    <span className="inline-block h-2.5 w-2.5 rounded-sm bg-violet-600" />
+                    综述 / Meta {evidence.reviewMeta.toLocaleString()}（{evidence.reviewMetaPct}%）
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-300" />
@@ -238,7 +265,7 @@ export default function DiseasePubMedPanel({ slug, approvalsByYear }: DiseasePub
             {/* 最新文献 */}
             <div>
               <h3 className="mb-2 text-sm font-medium text-slate-600">
-                最新文献（近 90 天{recent90.length > 0 ? ` · ${recent90.length} 篇` : ''}）
+                最新文献（近 90 天 · 仅临床研究与综述{recent90.length > 0 ? ` · ${recent90.length} 篇` : ''}）
               </h3>
               {recent90.length === 0 ? (
                 <p className="py-4 text-center text-xs text-slate-400">近 90 天暂无收录文献</p>
