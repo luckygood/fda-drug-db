@@ -29,8 +29,8 @@ const PLCM_TONE: Record<string, string> = {
   新规格: 'bg-violet-100 text-violet-700',
 }
 
-const thCls = 'px-3 py-2 text-left text-xs font-medium text-slate-500 whitespace-nowrap'
-const tdCls = 'px-3 py-2 text-sm text-slate-700 whitespace-nowrap'
+const thCls = 'px-4 py-2.5 text-left text-xs font-medium text-slate-500 whitespace-nowrap'
+const tdCls = 'px-4 py-3 text-sm text-slate-700 align-top'
 
 function monthsSince(dateStr: string | null): number | null {
   if (!dateStr) return null
@@ -64,71 +64,37 @@ function observation(r: LifecycleRecord): string {
   return `无原研 NDA/BLA 记录，${r.n_anda} 个 ANDA（${r.n_anda_companies} 家）的成熟仿制市场。`
 }
 
-type SortKey = 'first_approval' | 'originator' | 'months' | 'n_nda' | 'n_anda' | 'n_plcm' | 'months_to_expiry' | 'n_anda_companies'
+type SortKey = 'first_approval' | 'originator' | 'n_anda'
 
-interface ColDef {
-  key: SortKey | 'ingredient'
-  label: string
-  sortable?: boolean
-  render: (r: LifecycleRecord) => React.ReactNode
-  sortVal?: (r: LifecycleRecord) => number | string
+const SORT_VALS: Record<SortKey, (r: LifecycleRecord) => number | string> = {
+  first_approval: (r) => r.first_approval ?? '',
+  originator: (r) => r.originator ?? '',
+  n_anda: (r) => r.n_anda,
 }
 
-function columnsFor(stage: StageKey): ColDef[] {
-  const base: ColDef[] = [
-    {
-      key: 'first_approval', label: '首获批日期', sortable: true,
-      render: (r) => r.first_approval ?? '—',
-      sortVal: (r) => r.first_approval ?? '',
-    },
-    {
-      key: 'originator', label: '原研公司', sortable: true,
-      render: (r) => <span className="text-slate-600">{r.originator ?? '—'}</span>,
-      sortVal: (r) => r.originator ?? '',
-    },
-    {
-      key: 'months', label: '上市月数', sortable: true,
-      render: (r) => {
-        const m = monthsSince(r.first_approval)
-        return m == null ? '—' : `${m}`
-      },
-      sortVal: (r) => monthsSince(r.first_approval) ?? -1,
-    },
-    {
-      key: 'n_nda', label: 'NDA/BLA 数', sortable: true,
-      render: (r) => r.n_nda,
-      sortVal: (r) => r.n_nda,
-    },
-    {
-      key: 'n_anda', label: 'ANDA 竞争数', sortable: true,
-      render: (r) => r.n_anda,
-      sortVal: (r) => r.n_anda,
-    },
-    {
-      key: 'n_plcm', label: 'PLCM 动作数', sortable: true,
-      render: (r) => r.plcm_actions.length,
-      sortVal: (r) => r.plcm_actions.length,
-    },
-  ]
-  if (stage === '成熟期') {
-    base.splice(4, 1, {
-      key: 'months_to_expiry', label: '专利到期(月)', sortable: true,
-      render: (r) => {
-        if (r.months_to_expiry == null) return '—'
-        if (r.months_to_expiry < 0) return <span className="text-amber-600">已过期</span>
-        return <span className={r.months_to_expiry <= 24 ? 'font-medium text-amber-600' : ''}>{r.months_to_expiry}</span>
-      },
-      sortVal: (r) => r.months_to_expiry ?? 9999,
-    })
+/** 竞争格局单元格：NDA/ANDA 合并展示，按阶段附加上下文 */
+function CompetitionCell({ r, stage }: { r: LifecycleRecord; stage: StageKey }) {
+  const main = r.n_anda === 0
+    ? <span className="text-slate-400">暂无仿制</span>
+    : <span>{r.n_nda} NDA · <span className="font-medium text-slate-900">{r.n_anda}</span> ANDA</span>
+
+  let sub: React.ReactNode = null
+  if (stage === '成熟期' && r.months_to_expiry != null) {
+    sub = r.months_to_expiry < 0
+      ? <span className="text-amber-600">核心专利已过期</span>
+      : <span className={r.months_to_expiry <= 24 ? 'font-medium text-amber-600' : 'text-slate-400'}>
+          专利剩 {r.months_to_expiry} 个月
+        </span>
+  } else if ((stage === '衰退期' || stage === '仿制成熟期') && r.n_anda_companies > 0) {
+    sub = <span className="font-medium text-slate-600">{r.n_anda_companies} 家仿制厂家</span>
   }
-  if (stage === '衰退期' || stage === '仿制成熟期') {
-    base.splice(4, 1, {
-      key: 'n_anda_companies', label: '仿制厂家数', sortable: true,
-      render: (r) => r.n_anda_companies,
-      sortVal: (r) => r.n_anda_companies,
-    })
-  }
-  return base
+
+  return (
+    <div>
+      <div className="whitespace-nowrap">{main}</div>
+      {sub && <div className="mt-0.5 text-xs">{sub}</div>}
+    </div>
+  )
 }
 
 export default function LifecyclePage() {
@@ -157,8 +123,6 @@ export default function LifecyclePage() {
     setShown(PAGE_SIZE)
   }
 
-  const cols = useMemo(() => columnsFor(stage), [stage])
-
   const rows = useMemo(() => {
     if (!data) return []
     const q = query.trim().toUpperCase()
@@ -167,20 +131,17 @@ export default function LifecyclePage() {
       if (!q) return true
       return r.ingredient.includes(q) || (r.originator ?? '').toUpperCase().includes(q)
     })
-    const col = cols.find((c) => c.key === sortKey)
-    if (col?.sortVal) {
-      const sv = col.sortVal
-      list.sort((a, b) => {
-        const va = sv(a)
-        const vb = sv(b)
-        const cmp = typeof va === 'string' || typeof vb === 'string'
-          ? String(va).localeCompare(String(vb))
-          : (va as number) - (vb as number)
-        return sortAsc ? cmp : -cmp
-      })
-    }
+    const sv = SORT_VALS[sortKey]
+    list.sort((a, b) => {
+      const va = sv(a)
+      const vb = sv(b)
+      const cmp = typeof va === 'string' || typeof vb === 'string'
+        ? String(va).localeCompare(String(vb))
+        : (va as number) - (vb as number)
+      return sortAsc ? cmp : -cmp
+    })
     return list
-  }, [data, stage, query, sortKey, sortAsc, cols])
+  }, [data, stage, query, sortKey, sortAsc])
 
   const visible = rows.slice(0, shown)
 
@@ -218,18 +179,18 @@ export default function LifecyclePage() {
       </div>
 
       {/* 1. 阶段汇总卡片 */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {STAGES.map((s) => {
           const active = stage === s.key
           return (
             <button key={s.key} onClick={() => selectStage(s.key)} className="text-left">
               <Card className={cn('h-full border-2 transition-colors', active ? s.activeTone : 'border-transparent hover:border-slate-200')}>
-                <CardContent className="pt-4 pb-4">
-                  <p className="text-sm font-medium text-slate-500">{s.label}</p>
-                  <p className={cn('mt-1 text-2xl font-bold', s.tone)}>
+                <CardContent className="px-3 pt-3 pb-3">
+                  <p className="text-xs font-medium text-slate-500">{s.label}</p>
+                  <p className={cn('mt-0.5 text-xl font-bold', s.tone)}>
                     {(data.stage_counts[s.key] ?? 0).toLocaleString()}
                   </p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-400">{s.def}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-slate-400">{s.def}</p>
                 </CardContent>
               </Card>
             </button>
@@ -261,31 +222,33 @@ export default function LifecyclePage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-full table-fixed border-collapse">
               <thead>
                 <tr className="border-b border-slate-200">
-                  <th className={thCls}></th>
-                  <th className={thCls}>成分名</th>
-                  {cols.map((c) => (
-                    <th key={c.key} className={thCls}>
-                      {c.sortable ? (
-                        <button
-                          onClick={() => toggleSort(c.key as SortKey)}
-                          className={cn('inline-flex items-center gap-1 hover:text-slate-800', sortKey === c.key && 'text-blue-600')}
-                        >
-                          {c.label}
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      ) : c.label}
+                  <th className={cn(thCls, 'w-8')}></th>
+                  <th className={cn(thCls, 'w-[34%]')}>成分</th>
+                  {([
+                    { key: 'first_approval' as SortKey, label: '首获批', cls: 'w-[18%]' },
+                    { key: 'originator' as SortKey, label: '原研公司', cls: 'w-[24%]' },
+                    { key: 'n_anda' as SortKey, label: '竞争格局', cls: 'w-[24%]' },
+                  ]).map((c) => (
+                    <th key={c.key} className={cn(thCls, c.cls)}>
+                      <button
+                        onClick={() => toggleSort(c.key)}
+                        className={cn('inline-flex items-center gap-1 hover:text-slate-800', sortKey === c.key && 'text-blue-600')}
+                      >
+                        {c.label}
+                        <ArrowUpDown className="h-3 w-3" />
+                      </button>
                     </th>
                   ))}
-                  <th className={thCls}>风险</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((r) => {
                   const open = expanded === r.ingredient
                   const risk = r.shortage_risk ? SHORTAGE_LABEL[r.shortage_risk] : null
+                  const m = monthsSince(r.first_approval)
                   return (
                     <Fragment key={r.ingredient}>
                       <tr
@@ -295,18 +258,42 @@ export default function LifecyclePage() {
                         <td className={tdCls}>
                           {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
                         </td>
-                        <td className={cn(tdCls, 'font-medium text-slate-900')}>{r.ingredient}</td>
-                        {cols.map((c) => <td key={c.key} className={tdCls}>{c.render(r)}</td>)}
+                        {/* 成分：名称 + PLCM 徽标 + 风险小标签 */}
                         <td className={tdCls}>
-                          <div className="flex gap-1">
-                            {r.withdrawn && <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">已撤市</span>}
-                            {risk && <span className={cn('rounded px-1.5 py-0.5 text-xs', risk.cls)}>{risk.text}</span>}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-medium text-slate-900">{r.ingredient}</span>
+                            {r.plcm_actions.length > 0 && (
+                              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600">
+                                PLCM ×{r.plcm_actions.length}
+                              </span>
+                            )}
                           </div>
+                          {(r.withdrawn || risk) && (
+                            <div className="mt-1 flex gap-1">
+                              {r.withdrawn && <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">已撤市</span>}
+                              {risk && <span className={cn('rounded px-1.5 py-0.5 text-xs', risk.cls)}>{risk.text}</span>}
+                            </div>
+                          )}
+                        </td>
+                        {/* 首获批：日期 + 上市月数 */}
+                        <td className={tdCls}>
+                          <div className="whitespace-nowrap">{r.first_approval ?? '—'}</div>
+                          {m != null && <div className="mt-0.5 text-xs text-slate-400">上市 {m} 个月</div>}
+                        </td>
+                        {/* 原研公司：超长截断 */}
+                        <td className={tdCls}>
+                          <span className="block truncate text-slate-600" title={r.originator ?? undefined}>
+                            {r.originator ?? '—'}
+                          </span>
+                        </td>
+                        {/* 竞争格局：NDA/ANDA 合并 + 阶段上下文 */}
+                        <td className={tdCls}>
+                          <CompetitionCell r={r} stage={stage} />
                         </td>
                       </tr>
                       {open && (
                         <tr className="border-b border-slate-100 bg-slate-50/60">
-                          <td colSpan={cols.length + 3} className="px-6 py-4">
+                          <td colSpan={5} className="px-6 py-4">
                             <div className="space-y-3">
                               <p className="text-sm text-slate-700">
                                 <span className="mr-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">观察要点</span>
@@ -338,7 +325,7 @@ export default function LifecyclePage() {
                   )
                 })}
                 {visible.length === 0 && (
-                  <tr><td colSpan={cols.length + 3} className="py-10 text-center text-sm text-slate-400">无匹配成分</td></tr>
+                  <tr><td colSpan={5} className="py-10 text-center text-sm text-slate-400">无匹配成分</td></tr>
                 )}
               </tbody>
             </table>
