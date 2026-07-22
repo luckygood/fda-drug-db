@@ -65,6 +65,7 @@ export default function App() {
   const [pendingDisease, setPendingDisease] = useState<string | null>(null)
   const [pendingCompany, setPendingCompany] = useState<string | null>(null)
   const [pendingAPI, setPendingAPI] = useState<string | null>(null)
+  const [pendingIngredient, setPendingIngredient] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(COLLAPSE_KEY) === '1' } catch { return false }
   })
@@ -103,6 +104,13 @@ export default function App() {
   const openAPI = (slug: string) => {
     setPendingAPI(slug)
     setPage('api')
+    setView({ kind: 'list' })
+  }
+
+  /** 跨页跳转：在生命周期页检索并展开某个成分 */
+  const openLifecycleIngredient = (ingredient: string) => {
+    setPendingIngredient(ingredient)
+    setPage('lifecycle')
     setView({ kind: 'list' })
   }
 
@@ -219,6 +227,7 @@ export default function App() {
               onConsumePendingCompany={() => setPendingCompany(null)}
               onSelectDrug={(appNo) => openDetail(appNo, 'companies')}
               onSelectDisease={openDisease}
+              onSelectIngredient={openLifecycleIngredient}
             />
           ) : page === 'china' ? (
             <ChinaPage
@@ -235,6 +244,7 @@ export default function App() {
               onConsumePending={() => setPendingDisease(null)}
               onSelectDrug={(appNo) => openDetail(appNo, 'diseases')}
               onSelectCompany={openCompany}
+              onSelectIngredient={openLifecycleIngredient}
             />
           ) : page === 'api' ? (
             <APIPage
@@ -246,7 +256,12 @@ export default function App() {
           ) : page === 'feed' ? (
             <FeedPage />
           ) : page === 'lifecycle' ? (
-            <LifecyclePage />
+            <LifecyclePage
+            pendingIngredient={pendingIngredient}
+            onConsumePendingIngredient={() => setPendingIngredient(null)}
+            onSelectDisease={openDisease}
+            onSelectCompany={openCompany}
+          />
           ) : (
             <SearchPage onSelect={(appNo) => openDetail(appNo, 'search')} />
           )}

@@ -1022,3 +1022,41 @@ export function loadIngredientPubMed(): Promise<IngredientPubMedIndex> {
   }
   return ingredientPubMedPromise
 }
+
+// ---------- 实体关系层：成分 ↔ 企业 ↔ 疾病 ↔ 临床试验 ----------
+
+export interface EntityIngredientLinks {
+  diseases?: string[]   // 疾病 slug
+  companies?: string[]  // 企业 slug
+  trials?: string[]     // NCT 编号（按启动日期倒序，≤20）
+}
+
+export interface EntityDiseaseLinks {
+  ingredients: string[]
+  trial_count: number
+}
+
+export interface EntityCompanyLinks {
+  name: string
+  ingredients: string[]
+}
+
+export interface EntityMap {
+  generated_at: string
+  ingredients: Record<string, EntityIngredientLinks>
+  diseases: Record<string, EntityDiseaseLinks>
+  companies: Record<string, EntityCompanyLinks>
+}
+
+let entityMapPromise: Promise<EntityMap> | null = null
+
+export function loadEntityMap(): Promise<EntityMap> {
+  if (!entityMapPromise) {
+    entityMapPromise = fetch(`${import.meta.env.BASE_URL}data/entity_map.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`entity_map.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<EntityMap>
+      })
+  }
+  return entityMapPromise
+}

@@ -2,8 +2,8 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Loader2, Search, ChevronDown, ChevronRight, ArrowUpDown, Hourglass, BookOpen } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import {
-  loadLifecycleIndex, loadIngredientPubMed,
-  type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex,
+  loadLifecycleIndex, loadIngredientPubMed, loadEntityMap, loadDiseaseIndex,
+  type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex, type EntityMap,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -145,10 +145,76 @@ function PubMedBlock({ ingredient, pubmed }: { ingredient: string; pubmed: Ingre
   )
 }
 
-export default function LifecyclePage() {
+/** 成分实体关系块：疾病 / 企业 / 临床试验链接 */
+function EntityLinksBlock({ r, entityMap, diseaseNames, onSelectDisease, onSelectCompany }: {
+  r: LifecycleRecord
+  entityMap: EntityMap | null
+  diseaseNames: Record<string, string>
+  onSelectDisease?: (slug: string) => void
+  onSelectCompany?: (slug: string) => void
+}) {
+  const links = entityMap?.ingredients[r.ingredient]
+  if (!links) return null
+  const hasAny = (links.diseases?.length ?? 0) > 0 || (links.companies?.length ?? 0) > 0 || (links.trials?.length ?? 0) > 0
+  if (!hasAny) return null
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-slate-500">实体关系</p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {links.diseases?.map((slug) => (
+          <button
+            key={slug}
+            onClick={(e) => { e.stopPropagation(); onSelectDisease?.(slug) }}
+            title={`疾病视角：${slug}`}
+            className="rounded-full bg-rose-50 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-100"
+          >
+            {diseaseNames[slug] ?? slug}
+          </button>
+        ))}
+        {links.companies?.slice(0, 5).map((slug) => (
+          <button
+            key={slug}
+            onClick={(e) => { e.stopPropagation(); onSelectCompany?.(slug) }}
+            title={entityMap?.companies[slug]?.name ?? slug}
+            className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs text-indigo-700 hover:bg-indigo-100"
+          >
+            {entityMap?.companies[slug]?.name ?? slug}
+          </button>
+        ))}
+        {(links.companies?.length ?? 0) > 5 && (
+          <span className="text-xs text-slate-400">等 {links.companies!.length} 家企业</span>
+        )}
+        {(links.trials?.length ?? 0) > 0 && (
+          <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs text-teal-700">
+            关联临床试验 {links.trials!.length} 项
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface LifecyclePageProps {
+  /** 跨页传入的成分名（疾病页/企业页成分 chips），待本页消费：切到对应阶段并展开 */
+  pendingIngredient?: string | null
+  onConsumePendingIngredient?: () => void
+  /** 点击疾病 chip 跳转疾病视角页 */
+  onSelectDisease?: (slug: string) => void
+  /** 点击企业 chip 跳转企业画像页 */
+  onSelectCompany?: (slug: string) => void
+}
+
+export default function LifecyclePage({
+  pendingIngredient,
+  onConsumePendingIngredient,
+  onSelectDisease,
+  onSelectCompany,
+}: LifecyclePageProps) {
   const [data, setData] = useState<LifecycleIndex | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pubmed, setPubmed] = useState<IngredientPubMedIndex | null>(null)
+  const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
+  const [diseaseNames, setDiseaseNames] = useState<Record<string, string>>({})
   const [stage, setStage] = useState<StageKey>('引入期')
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('first_approval')
@@ -160,7 +226,28 @@ export default function LifecyclePage() {
     loadLifecycleIndex()
       .then(setData)
       .catch((e: Error) => setError(e.message))
+    loadEntityMap()
+      .then(setEntityMap)
+      .catch(() => setEntityMap(null))
+    loadDiseaseIndex()
+      .then((d) => setDiseaseNames(Object.fromEntries(d.diseases.map((x) => [x.slug, x.name_zh]))))
+      .catch(() => setDiseaseNames({}))
   }, [])
+
+  // 消费跨页传入的成分：切到其所在阶段、检索并展开
+  useEffect(() => {
+    if (!pendingIngredient || !data) return
+    const rec = data.records[pendingIngredient.toUpperCase()]
+    if (rec) {
+      const target = rec.stage as StageKey
+      if (STAGES.some((s) => s.key === target)) setStage(target)
+      setQuery(rec.ingredient)
+      setExpanded(rec.ingredient)
+      setShown(PAGE_SIZE)
+    }
+    onConsumePendingIngredient?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingIngredient, data])
 
   // 仅在引入期视图加载 PubMed 证据（约 72 KB，带缓存）
   useEffect(() => {
@@ -377,6 +464,13 @@ export default function LifecyclePage() {
                                 <p className="text-xs text-slate-400">暂无识别到的 PLCM 动作。</p>
                               )}
                               {stage === '引入期' && <PubMedBlock ingredient={r.ingredient} pubmed={pubmed} />}
+                              <EntityLinksBlock
+                                r={r}
+                                entityMap={entityMap}
+                                diseaseNames={diseaseNames}
+                                onSelectDisease={onSelectDisease}
+                                onSelectCompany={onSelectCompany}
+                              />
                             </div>
                           </td>
                         </tr>

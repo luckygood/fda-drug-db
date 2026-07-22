@@ -20,9 +20,11 @@ import {
   loadDisease,
   loadDiseaseIndex,
   loadSponsorMap,
+  loadEntityMap,
   resolveCompanySlug,
   type DiseaseDetail,
   type DiseaseIndexEntry,
+  type EntityMap,
 } from '@/lib/data'
 
 interface DiseasesPageProps {
@@ -32,9 +34,11 @@ interface DiseasesPageProps {
   onConsumePending?: () => void
   /** 点击药物行持证商跳转企业画像 */
   onSelectCompany?: (slug: string) => void
+  /** 点击成分 chip 跳转生命周期页 */
+  onSelectIngredient?: (ingredient: string) => void
 }
 
-export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePending, onSelectCompany }: DiseasesPageProps) {
+export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePending, onSelectCompany, onSelectIngredient }: DiseasesPageProps) {
   const [index, setIndex] = useState<DiseaseIndexEntry[] | null>(null)
   const [areas, setAreas] = useState<string[]>([])
   const [indexError, setIndexError] = useState<string | null>(null)
@@ -45,12 +49,16 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
   const [detailLoading, setDetailLoading] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
+  const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadSponsorMap()
       .then(setSponsorMap)
       .catch(() => setSponsorMap(null))
+    loadEntityMap()
+      .then(setEntityMap)
+      .catch(() => setEntityMap(null))
   }, [])
 
   useEffect(() => {
@@ -292,6 +300,36 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
             </CardHeader>
             <CardContent>{timelineOption && <EChart option={timelineOption} height={260} />}</CardContent>
           </Card>
+
+          {/* 相关成分 / 在研管线（实体关系层） */}
+          {(() => {
+            const links = entityMap?.diseases[selected.slug]
+            if (!links || (links.ingredients.length === 0 && links.trial_count === 0)) return null
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">相关成分 / 在研管线</CardTitle>
+                  {links.trial_count > 0 && (
+                    <p className="text-xs text-slate-400">关联临床试验 {links.trial_count} 项（ClinicalTrials.gov）</p>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-1.5">
+                    {links.ingredients.map((ing) => (
+                      <button
+                        key={ing}
+                        onClick={() => onSelectIngredient?.(ing)}
+                        title="在生命周期页查看该成分"
+                        className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        {ing}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
 
           {/* PubMed 研究洞察（试点疾病） */}
           {['atopic-dermatitis', 'iga-nephropathy'].includes(selected.slug) && (

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Loader2, Building2, Search, Award, Pill, Stethoscope, TrendingUp,
+  Loader2, Building2, Search, Award, Pill, Stethoscope, TrendingUp, FlaskConical,
 } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
 import {
-  loadCompanyIndex, loadCompanyShard, companyShardLetter,
-  type CompanyIndexEntry, type CompanyDetail,
+  loadCompanyIndex, loadCompanyShard, companyShardLetter, loadEntityMap,
+  type CompanyIndexEntry, type CompanyDetail, type EntityMap,
 } from '@/lib/data'
 
 const COLORS = {
@@ -58,12 +58,15 @@ function compositionLine(d: CompanyDetail): string {
 export default function CompaniesPage({
   onSelectDrug,
   onSelectDisease,
+  onSelectIngredient,
   pendingCompany,
   onConsumePendingCompany,
 }: {
   onSelectDrug: (applicationNumber: string) => void
   /** 点击疾病 chip 跳转疾病视角页 */
   onSelectDisease?: (slug: string) => void
+  /** 点击成分 chip 跳转生命周期页 */
+  onSelectIngredient?: (ingredient: string) => void
   /** 跨页传入的企业 slug（全局搜索 / 详情页 / 疾病页持证商），待本页消费 */
   pendingCompany?: string | null
   onConsumePendingCompany?: () => void
@@ -77,10 +80,15 @@ export default function CompaniesPage({
   const [detailError, setDetailError] = useState<string | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
 
+  const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
+
   useEffect(() => {
     loadCompanyIndex()
       .then(setIndex)
       .catch((e: Error) => setError(e.message))
+    loadEntityMap()
+      .then(setEntityMap)
+      .catch(() => setEntityMap(null))
   }, [])
 
   // 点击搜索框外部时收起建议
@@ -375,6 +383,39 @@ export default function CompaniesPage({
                 </p>
               </CardContent>
             </Card>
+
+            {/* 成分 / 管线（实体关系层） */}
+            {(() => {
+              const ings = entityMap?.companies[detail.slug]?.ingredients ?? []
+              if (ings.length === 0) return null
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FlaskConical className="h-5 w-5 text-violet-600" />
+                      成分 / 管线（{ings.length} 个）
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {ings.map((ing) => (
+                        <button
+                          key={ing}
+                          onClick={() => onSelectIngredient?.(ing)}
+                          title="在生命周期页查看该成分"
+                          className="rounded-full border border-violet-200 bg-violet-50/60 px-3 py-1.5 text-xs text-violet-800 transition-colors hover:border-violet-400 hover:bg-violet-100"
+                        >
+                          {ing}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-slate-400">
+                      口径：该企业作为持证商（原研或 ANDA 申请者）覆盖的活性成分；点击 chip 跳转生命周期页。
+                    </p>
+                  </CardContent>
+                </Card>
+              )
+            })()}
           </div>
 
           {/* 在售产品 */}
