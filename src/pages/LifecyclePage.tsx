@@ -1,7 +1,10 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Loader2, Search, ChevronDown, ChevronRight, ArrowUpDown, Hourglass } from 'lucide-react'
+import { Loader2, Search, ChevronDown, ChevronRight, ArrowUpDown, Hourglass, BookOpen } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { loadLifecycleIndex, type LifecycleIndex, type LifecycleRecord } from '@/lib/data'
+import {
+  loadLifecycleIndex, loadIngredientPubMed,
+  type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex,
+} from '@/lib/data'
 import { cn } from '@/lib/utils'
 
 const TODAY = new Date('2026-07-22T00:00:00')
@@ -97,9 +100,55 @@ function CompetitionCell({ r, stage }: { r: LifecycleRecord; stage: StageKey }) 
   )
 }
 
+/** 引入期成分的 PubMed 证据块（2023-2026） */
+function PubMedBlock({ ingredient, pubmed }: { ingredient: string; pubmed: IngredientPubMedIndex | null }) {
+  const entry = pubmed?.ingredients[ingredient]
+  const empty = !entry || (!(entry.clinical_count ?? 0) && !(entry.review_count ?? 0) && entry.recent.length === 0)
+  return (
+    <div>
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+        <BookOpen className="h-3.5 w-3.5" />
+        PubMed 证据（2023-2026）
+      </p>
+      {empty ? (
+        <p className="text-xs text-slate-400">近3年暂无论文收录</p>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
+              临床研究与随机对照 <b>{entry.clinical_count ?? 0}</b>
+            </span>
+            <span className="rounded bg-sky-50 px-2 py-1 text-xs text-sky-700">
+              综述与Meta <b>{entry.review_count ?? 0}</b>
+            </span>
+          </div>
+          {entry.recent.length > 0 && (
+            <ul className="space-y-1">
+              {entry.recent.slice(0, 5).map((a) => (
+                <li key={a.pmid} className="text-xs leading-relaxed">
+                  <a
+                    href={`https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {a.title}
+                  </a>
+                  <span className="ml-1.5 text-slate-400">{a.journal} · {a.pubdate.slice(0, 4)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function LifecyclePage() {
   const [data, setData] = useState<LifecycleIndex | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pubmed, setPubmed] = useState<IngredientPubMedIndex | null>(null)
   const [stage, setStage] = useState<StageKey>('引入期')
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('first_approval')
@@ -112,6 +161,16 @@ export default function LifecyclePage() {
       .then(setData)
       .catch((e: Error) => setError(e.message))
   }, [])
+
+  // 仅在引入期视图加载 PubMed 证据（约 72 KB，带缓存）
+  useEffect(() => {
+    if (stage !== '引入期' || pubmed) return
+    let alive = true
+    loadIngredientPubMed()
+      .then((d) => { if (alive) setPubmed(d) })
+      .catch(() => { /* 证据缺失时静默降级 */ })
+    return () => { alive = false }
+  }, [stage, pubmed])
 
   // 切换阶段时重置排序/展开/分页
   const selectStage = (s: StageKey) => {
@@ -317,6 +376,7 @@ export default function LifecyclePage() {
                               ) : (
                                 <p className="text-xs text-slate-400">暂无识别到的 PLCM 动作。</p>
                               )}
+                              {stage === '引入期' && <PubMedBlock ingredient={r.ingredient} pubmed={pubmed} />}
                             </div>
                           </td>
                         </tr>

@@ -989,3 +989,36 @@ export function loadLifecycleIndex(): Promise<LifecycleIndex> {
   }
   return lifecyclePromise
 }
+
+// ---------- 引入期成分 PubMed 证据 ----------
+
+export interface PubMedArticle {
+  pmid: string
+  title: string
+  journal: string
+  pubdate: string
+}
+
+export interface IngredientPubMed {
+  clinical_count: number | null
+  review_count: number | null
+  recent: PubMedArticle[]
+}
+
+export interface IngredientPubMedIndex {
+  generated_at: string
+  ingredients: Record<string, IngredientPubMed>
+}
+
+let ingredientPubMedPromise: Promise<IngredientPubMedIndex> | null = null
+
+export function loadIngredientPubMed(): Promise<IngredientPubMedIndex> {
+  if (!ingredientPubMedPromise) {
+    ingredientPubMedPromise = fetch(`${import.meta.env.BASE_URL}data/ingredient_pubmed.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`ingredient_pubmed.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<IngredientPubMedIndex>
+      })
+  }
+  return ingredientPubMedPromise
+}
