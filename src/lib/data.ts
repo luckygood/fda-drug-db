@@ -1122,3 +1122,50 @@ export interface LagStats {
   both: { n: number }
   notable: { ema_top10: LagNotableRow[]; pmda_top10: LagNotableRow[] }
 }
+
+// ---------- 报告 C：年度 NME 全景 ----------
+
+export interface NmeIngredient {
+  ing: string
+  date: string
+  company: string
+  type: string
+  diseases: string[]
+}
+
+export interface NmeYear {
+  total: number
+  type_dist: Record<string, number>
+  monthly: number[]
+  top_areas: [string, number][]
+  top_companies: [string, number][]
+  global: {
+    ema_pct: number | null
+    pmda_pct: number | null
+    ema_median_lag: number | null
+    pmda_median_lag: number | null
+    ema_n: number
+    pmda_n: number
+    n_with_data: number
+  }
+  ingredients: NmeIngredient[]
+}
+
+export interface NmeAnnual {
+  generated_at: string
+  scope: string
+  years: Record<string, NmeYear>
+}
+
+let nmeAnnualPromise: Promise<NmeAnnual> | null = null
+
+export function loadNmeAnnual(): Promise<NmeAnnual> {
+  if (!nmeAnnualPromise) {
+    nmeAnnualPromise = fetch(`${import.meta.env.BASE_URL}data/nme_annual.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`nme_annual.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<NmeAnnual>
+      })
+  }
+  return nmeAnnualPromise
+}

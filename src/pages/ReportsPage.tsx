@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import {
-  FileText, FlaskConical, Stethoscope, Building2, Globe2,
-  Newspaper, ChevronRight, Loader2, CalendarClock, Lock,
+  FileText, FlaskConical, Stethoscope, Building2,
+  Newspaper, ChevronRight, Loader2, CalendarClock, Lock, Globe2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { supabaseGet, type WeeklyReport } from '@/lib/supabase'
+import NmeAnnualReport from '@/components/NmeAnnualReport'
 
 interface ReportCardSpec {
   icon: typeof FileText
@@ -29,14 +30,7 @@ const UPCOMING_ENTITY_REPORTS: ReportCardSpec[] = [
   },
 ]
 
-const UPCOMING_TOPIC_REPORTS: ReportCardSpec[] = [
-  {
-    icon: Globe2,
-    title: '《年度新分子实体（NME）全景报告》',
-    desc: '年度 FDA 新分子实体的一站式回顾与全球同步分析',
-    chapters: ['年度清单', '分子类型', '治疗领域', '企业归属', '全球同步率', '审评速度'],
-  },
-]
+const UPCOMING_TOPIC_REPORTS: ReportCardSpec[] = []
 
 function UpcomingCard({ spec }: { spec: ReportCardSpec }) {
   const Icon = spec.icon
@@ -66,20 +60,32 @@ function UpcomingCard({ spec }: { spec: ReportCardSpec }) {
   )
 }
 
-export default function ReportsPage({ onGoAPI, onGoFeed }: {
+export default function ReportsPage({ onGoAPI, onGoFeed, onSelectIngredient }: {
   /** 跳转成分透视 tab（报告 B 的生成入口） */
   onGoAPI: () => void
   /** 跳转研发情报 tab（周报详情） */
   onGoFeed: () => void
+  /** 跳转生命周期页并展开某个成分（报告 C 清单点击） */
+  onSelectIngredient: (ing: string) => void
 }) {
   const [reports, setReports] = useState<WeeklyReport[] | null>(null)
   const [reportsError, setReportsError] = useState<string | null>(null)
+  const [showNme, setShowNme] = useState(false)
 
   useEffect(() => {
     supabaseGet<WeeklyReport[]>('weekly_reports?order=generated_at.desc&limit=8')
       .then(setReports)
       .catch((e: Error) => setReportsError(e.message))
   }, [])
+
+  if (showNme) {
+    return (
+      <NmeAnnualReport
+        onBack={() => setShowNme(false)}
+        onSelectIngredient={onSelectIngredient}
+      />
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -133,6 +139,35 @@ export default function ReportsPage({ onGoAPI, onGoFeed }: {
       <section>
         <h3 className="mb-3 text-sm font-semibold text-slate-800">专题报告</h3>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {/* 报告 C：已上线 */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2">
+                <Globe2 className="h-5 w-5 text-blue-600" />
+                <p className="font-semibold text-slate-900">《年度新分子实体（NME）全景报告》</p>
+                <Badge className="ml-auto bg-blue-600 font-normal">已上线</Badge>
+              </div>
+              <p className="mt-2 text-sm text-slate-500">
+                年度 FDA 新分子实体的一站式回顾：审批节奏、分子类型、治疗领域、企业归属与全球三地同步率，支持 2020-2026 年度切换与 PDF 导出。
+              </p>
+              <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-0.5">
+                {['审批节奏', '分子类型', '治疗领域', '企业归属', '全球同步率', '完整清单'].map((c) => (
+                  <li key={c} className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <span className="h-1 w-1 rounded-full bg-blue-300" />
+                    {c}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => setShowNme(true)}
+                className="mt-4 flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                阅读报告
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </CardContent>
+          </Card>
+
           {UPCOMING_TOPIC_REPORTS.map((spec) => <UpcomingCard key={spec.title} spec={spec} />)}
         </div>
       </section>
