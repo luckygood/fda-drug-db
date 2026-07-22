@@ -936,3 +936,56 @@ export function loadAPIDiseaseMatrix(): Promise<Record<string, APIDiseaseLink[]>
   }
   return apiDiseaseMatrixPromise
 }
+
+// ---------- 药品生命周期索引 ----------
+
+export interface LifecyclePLCM {
+  type: '新适应症' | '新剂型' | '新规格' | string
+  year: number
+  note: string
+}
+
+export interface LifecycleRecord {
+  ingredient: string
+  stage: '引入期' | '成长期' | '成熟期' | '衰退期' | '仿制成熟期' | string
+  first_approval: string | null
+  originator: string | null
+  n_nda: number
+  n_anda: number
+  n_anda_companies: number
+  patent_earliest_expiry: string | null
+  patent_latest_expiry: string | null
+  months_to_expiry: number | null
+  withdrawn: boolean
+  shortage_risk: 'high' | 'medium' | 'watch' | null
+  plcm_actions: LifecyclePLCM[]
+}
+
+export interface LifecycleIndex {
+  generated_at: string
+  total_ingredients: number
+  stage_counts: Record<string, number>
+  alerts: {
+    expiring_24m: {
+      ingredient: string
+      expiry: string
+      months_to_expiry: number
+      stage: string
+      n_anda: number
+    }[]
+  }
+  records: Record<string, LifecycleRecord>
+}
+
+let lifecyclePromise: Promise<LifecycleIndex> | null = null
+
+export function loadLifecycleIndex(): Promise<LifecycleIndex> {
+  if (!lifecyclePromise) {
+    lifecyclePromise = fetch(`${import.meta.env.BASE_URL}data/lifecycle_index.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`lifecycle_index.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<LifecycleIndex>
+      })
+  }
+  return lifecyclePromise
+}

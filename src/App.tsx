@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark, FlaskConical, Newspaper } from 'lucide-react'
+import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark, FlaskConical, Newspaper, Hourglass } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
@@ -11,10 +11,11 @@ import SafetyMarketPage from './pages/SafetyMarketPage'
 import PatentSupplyPage from './pages/PatentSupplyPage'
 import APIPage from './pages/APIPage'
 import FeedPage from './pages/FeedPage'
+import LifecyclePage from './pages/LifecyclePage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
 
-type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent' | 'api' | 'feed'
+type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent' | 'api' | 'feed' | 'lifecycle'
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; applicationNumber: string; from: Page }
@@ -37,6 +38,7 @@ export default function App() {
     { key: 'safety', label: '安全与市场', icon: ShieldAlert },
     { key: 'patent', label: '专利与供应', icon: Landmark },
     { key: 'feed', label: '研发情报', icon: Newspaper },
+    { key: 'lifecycle', label: '生命周期', icon: Hourglass },
   ]
 
   const openDetail = (applicationNumber: string, from: Page) =>
@@ -158,6 +160,8 @@ export default function App() {
           />
         ) : page === 'feed' ? (
           <FeedPage />
+        ) : page === 'lifecycle' ? (
+          <LifecyclePage />
         ) : (
           <SearchPage onSelect={(appNo) => openDetail(appNo, 'search')} />
         )}
