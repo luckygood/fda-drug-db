@@ -1169,3 +1169,37 @@ export function loadNmeAnnual(): Promise<NmeAnnual> {
   }
   return nmeAnnualPromise
 }
+
+// ---------- 疾病级 PubMed 证据（报告 A 数据地基） ----------
+
+export interface DiseasePubMedRecent {
+  pmid: string
+  title: string
+  journal: string
+  pubdate: string
+  pubtype: string[]
+}
+
+export interface DiseasePubMedEntry {
+  clinical_count: number | null
+  review_count: number | null
+  recent: DiseasePubMedRecent[]
+}
+
+export interface DiseasePubMed {
+  generated_at: string
+  diseases: Record<string, DiseasePubMedEntry>
+}
+
+let diseasePubMedPromise: Promise<DiseasePubMed> | null = null
+
+export function loadDiseasePubMed(): Promise<DiseasePubMed> {
+  if (!diseasePubMedPromise) {
+    diseasePubMedPromise = fetch(`${import.meta.env.BASE_URL}data/disease_pubmed.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`disease_pubmed.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<DiseasePubMed>
+      })
+  }
+  return diseasePubMedPromise
+}

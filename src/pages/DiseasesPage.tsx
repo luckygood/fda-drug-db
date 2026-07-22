@@ -331,10 +331,8 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
             )
           })()}
 
-          {/* PubMed 研究洞察（试点疾病） */}
-          {['atopic-dermatitis', 'iga-nephropathy'].includes(selected.slug) && (
-            <DiseasePubMedPanel slug={selected.slug} approvalsByYear={detail.approvals_by_year} />
-          )}
+          {/* PubMed 研究洞察（覆盖疾病见 disease_pubmed.json，未覆盖的疾病面板不渲染） */}
+          <DiseasePubMedPanel slug={selected.slug} />
 
           {/* 药物全景表 */}
           <Card>
