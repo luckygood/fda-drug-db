@@ -73,3 +73,39 @@
     @apply bg-background text-foreground;
   }
 }
+/* ---------- 报告视图打印样式（报告 B） ---------- */
+@media print {
+  /* 隐藏应用外壳与交互元素 */
+  aside,
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  /* 报告文档占满页面、浅色安全色 */
+  .report-doc {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #0f172a;
+    background: #fff;
+  }
+  .report-doc .report-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+  .report-doc h2.report-chapter {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .report-doc table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  @page {
+    margin: 16mm 14mm;
+  }
+}

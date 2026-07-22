@@ -9,6 +9,7 @@ import {
 } from '@/lib/data'
 import { StatusBadge, TypeBadge } from '@/components/StatusBadge'
 import IngredientEntityPanel from '@/components/IngredientEntityPanel'
+import IngredientReport from '@/components/IngredientReport'
 
 const COLORS: Record<string, string> = {
   pioneer: '#2563eb',
@@ -58,6 +59,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
   const [query, setQuery] = useState('')
   const [showSugg, setShowSugg] = useState(false)
   const [detail, setDetail] = useState<APIDetail | null>(null)
+  const [reportMode, setReportMode] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -199,6 +201,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
   const selectAPI = (entry: APIIndexEntry) => {
     setShowSugg(false)
     setQuery(entry.api_name)
+    setReportMode(false)
     setViewMode('search')
     setLoadingDetail(true)
     setDetailError(null)
@@ -217,6 +220,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
   }
 
   const clearFilters = () => {
+    setReportMode(false)
     setActiveLetter(null)
     setActiveStage(null)
     setPage(0)
@@ -621,7 +625,16 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
         </div>
       )}
 
-      {!loadingDetail && detail && (
+      {!loadingDetail && detail && reportMode && (
+        <IngredientReport
+          key={detail.api_slug}
+          apiName={detail.api_name}
+          products={detail.products}
+          onBack={() => setReportMode(false)}
+        />
+      )}
+
+      {!loadingDetail && detail && !reportMode && (
         <>
           {/* 头部档案 */}
           <Card>
@@ -671,6 +684,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
             products={detail.products}
             onSelectDisease={onSelectDisease}
             onSelectCompany={onSelectCompany}
+            onOpenReport={() => setReportMode(true)}
           />
 
           {/* 申请类型分布 + 疾病关联 */}

@@ -82,12 +82,14 @@ function fmtDate(d: string): string {
   return d === '9999' ? '现状' : d
 }
 
-export default function IngredientEntityPanel({ apiName, products, onSelectDisease, onSelectCompany }: {
+export default function IngredientEntityPanel({ apiName, products, onSelectDisease, onSelectCompany, onOpenReport }: {
   apiName: string
   /** 成分透视详情中的产品清单（用于推导首个 ANDA 获批日） */
   products: APIProduct[]
   onSelectDisease?: (slug: string) => void
   onSelectCompany?: (slug: string) => void
+  /** 切换到报告视图（报告 B） */
+  onOpenReport?: () => void
 }) {
   const [rec, setRec] = useState<LifecycleRecord | null>(null)
   const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
@@ -142,6 +144,14 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
             </span>
             {rec.withdrawn && <span className="rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-600">已撤市</span>}
             {risk && <span className={cn('rounded px-2 py-0.5 text-xs', risk.cls)}>{risk.text}</span>}
+            {onOpenReport && (
+              <button
+                onClick={onOpenReport}
+                className="ml-auto flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+              >
+                📄 报告视图
+              </button>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
