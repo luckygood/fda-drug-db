@@ -223,7 +223,7 @@ export default function App() {
               onSelectDisease={openDisease}
             />
           ) : page === 'insights' ? (
-            <InsightsPage />
+            <InsightsPage onSelectIngredient={openLifecycleIngredient} />
           ) : page === 'mining' ? (
             <MiningPage
               onSelectDrug={(appNo) => openDetail(appNo, 'mining')}

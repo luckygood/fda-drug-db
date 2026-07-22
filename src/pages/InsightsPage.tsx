@@ -4,6 +4,7 @@ import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
 import { loadStats, type Stats } from '@/lib/data'
+import GlobalLagSection from '@/components/GlobalLagSection'
 
 // 医药风配色：与整站蓝/青主色一致
 const COLORS = {
@@ -33,7 +34,7 @@ function HeadlineCard({ label, value, sub }: { label: string; value: string; sub
   )
 }
 
-export default function InsightsPage() {
+export default function InsightsPage({ onSelectIngredient }: { onSelectIngredient?: (ing: string) => void }) {
   const [stats, setStats] = useState<Stats | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -252,6 +253,9 @@ export default function InsightsPage() {
           <CardContent>{ingredientsOption && <EChart option={ingredientsOption} height={430} />}</CardContent>
         </Card>
       </div>
+
+      {/* 全球批准时滞（L2） */}
+      <GlobalLagSection onSelectIngredient={onSelectIngredient} />
 
       {/* 剂型分布 */}
       <Card>

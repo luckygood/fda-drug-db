@@ -1080,6 +1080,7 @@ export interface GlobalAccess {
   pmda_source_url?: string
   pmda_page_url?: string
   stats: Record<string, number>
+  lag_stats?: LagStats
   records: Record<string, GlobalAccessRecord>
 }
 
@@ -1094,4 +1095,30 @@ export function loadGlobalAccess(): Promise<GlobalAccess> {
       })
   }
   return globalAccessPromise
+}
+
+// ---------- 全球可及性 L2：三地批准时滞 ----------
+
+export interface LagBlock {
+  n: number
+  median: number
+  p25: number
+  p75: number
+  min: number
+  max: number
+  histogram: { bin: string; count: number }[]
+}
+
+export interface LagNotableRow {
+  ing: string
+  fda: string
+  other: string
+  months: number
+}
+
+export interface LagStats {
+  ema: LagBlock | null
+  pmda: LagBlock | null
+  both: { n: number }
+  notable: { ema_top10: LagNotableRow[]; pmda_top10: LagNotableRow[] }
 }

@@ -208,15 +208,18 @@ def main():
     # ---------- 目标成分：2020+ FDA 原始 NDA/BLA ----------
     products = json.load(open(DATA / "products.json"))
     idx = {n: i for i, n in enumerate(products["fields"])}
-    target = {}  # ing -> earliest NDA/BLA date >= cutoff
+    target = {}    # ing -> earliest NDA/BLA date >= cutoff
+    fda_ever = {}  # ing -> earliest NDA/BLA date ever（lag 口径用，避免老药新批干扰）
     for row in products["rows"]:
         if row[idx["appl_type"]] not in ("NDA", "BLA"):
             continue
         d = row[idx["approval_date"]] or ""
-        if d < CUTOFF:
-            continue
         ing = (row[idx["active_ingredient"]] or "").strip().upper()
-        if not ing:
+        if not ing or not d:
+            continue
+        if ing not in fda_ever or d < fda_ever[ing]:
+            fda_ever[ing] = d
+        if d < CUTOFF:
             continue
         if ing not in target or d < target[ing]:
             target[ing] = d
@@ -323,6 +326,61 @@ def main():
         if len(matched_samples) < 5:
             matched_samples.append((ing, overall, first_date, product, match_type))
 
+    # ---------- L2：三地批准时滞（drug lag） ----------
+    def months_between(d1, d2):
+        """d2 - d1 的整月数（负值 = d2 更早）。"""
+        return (int(d2[:4]) - int(d1[:4])) * 12 + (int(d2[5:7]) - int(d1[5:7]))
+
+    def lag_block(pairs):
+        """pairs: [(fda_date, other_date)] -> 统计块。"""
+        lags = sorted(months_between(f, o) for f, o in pairs)
+        if not lags:
+            return None
+        n = len(lags)
+
+        def pct(p):
+            return lags[min(n - 1, max(0, round((p / 100) * (n - 1))))]
+
+        bins = [("≤-12", -10**9, -12), ("-12~-1", -11, -1), ("0~11", 0, 11),
+                ("12~23", 12, 23), ("24~35", 24, 35), ("≥36 月", 36, 10**9)]
+        histogram = [{"bin": label, "count": sum(1 for x in lags if lo <= x <= hi)}
+                     for label, lo, hi in bins]
+        return {"n": n, "median": pct(50), "p25": pct(25), "p75": pct(75),
+                "min": lags[0], "max": lags[-1], "histogram": histogram}
+
+    ema_pairs, pmda_pairs = [], []
+    both_n = 0
+    ema_lag_rows, pmda_lag_rows = [], []
+    for ing, rec in records.items():
+        # lag 口径：仅统计 FDA 史上首次获批也在 2020+ 的新成分（NME），
+        # 排除老药新剂型/新适应症造成的“EMA 早于 FDA 数十年”伪影；
+        # 同时排除美版生物类似药（-XXXX 后缀，EMA 命中的是参比制剂，时滞无意义）
+        fda_d = fda_ever.get(ing)
+        if not fda_d or fda_d < CUTOFF or re.search(r"-[A-Z]{4}$", ing):
+            continue
+        if rec["ema_status"] and rec["ema_first_date"]:
+            ema_pairs.append((fda_d, rec["ema_first_date"]))
+            ema_lag_rows.append((months_between(fda_d, rec["ema_first_date"]), ing, fda_d, rec["ema_first_date"]))
+        if rec["pmda_status"] == "approved" and rec["pmda_first_date"]:
+            pmda_pairs.append((fda_d, rec["pmda_first_date"]))
+            pmda_lag_rows.append((months_between(fda_d, rec["pmda_first_date"]), ing, fda_d, rec["pmda_first_date"]))
+        if rec["ema_first_date"] and rec["pmda_first_date"]:
+            both_n += 1
+
+    def top_lags(rows):
+        rows = sorted(rows, key=lambda x: x[0], reverse=True)[:10]
+        return [{"ing": ing, "fda": f, "other": o, "months": m} for m, ing, f, o in rows]
+
+    lag_stats = {
+        "ema": lag_block(ema_pairs),
+        "pmda": lag_block(pmda_pairs),
+        "both": {"n": both_n},
+        "notable": {
+            "ema_top10": top_lags(ema_lag_rows),
+            "pmda_top10": top_lags(pmda_lag_rows),
+        },
+    }
+
     out = {
         "generated_at": date.today().isoformat(),
         "scope": "fda_nda_2020plus",
@@ -331,11 +389,20 @@ def main():
         "pmda_source_url": PMDA_URL,
         "pmda_page_url": PMDA_PAGE_URL,
         "stats": {"total": len(target), **stats},
+        "lag_stats": lag_stats,
         "records": records,
     }
     out_path = DATA / "global_access.json"
     with open(out_path, "w") as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))
+
+    le, lp = lag_stats["ema"], lag_stats["pmda"]
+    print(f"\n=== 时滞统计（月） ===")
+    if le:
+        print(f"EMA : n={le['n']} 中位={le['median']} P25={le['p25']} P75={le['p75']} 范围[{le['min']}, {le['max']}]")
+    if lp:
+        print(f"PMDA: n={lp['n']} 中位={lp['median']} P25={lp['p25']} P75={lp['p75']} 范围[{lp['min']}, {lp['max']}]")
+    print(f"三地齐备: {both_n}")
 
     print(f"\n=== 匹配统计 ===")
     print(f"总数: {len(target)}")
