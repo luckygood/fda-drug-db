@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark, FlaskConical, Newspaper, Hourglass, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark, FlaskConical, Newspaper, Hourglass, FileText, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
@@ -12,10 +12,11 @@ import PatentSupplyPage from './pages/PatentSupplyPage'
 import APIPage from './pages/APIPage'
 import FeedPage from './pages/FeedPage'
 import LifecyclePage from './pages/LifecyclePage'
+import ReportsPage from './pages/ReportsPage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
 
-type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent' | 'api' | 'feed' | 'lifecycle'
+type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent' | 'api' | 'feed' | 'lifecycle' | 'reports'
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; applicationNumber: string; from: Page }
@@ -53,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { key: 'feed', label: '研发情报', icon: Newspaper },
       { key: 'lifecycle', label: '生命周期', icon: Hourglass },
+      { key: 'reports', label: '报告中心', icon: FileText },
     ],
   },
 ]
@@ -266,6 +268,11 @@ export default function App() {
             />
           ) : page === 'feed' ? (
             <FeedPage />
+          ) : page === 'reports' ? (
+            <ReportsPage
+              onGoAPI={() => { setPage('api'); setView({ kind: 'list' }) }}
+              onGoFeed={() => { setPage('feed'); setView({ kind: 'list' }) }}
+            />
           ) : page === 'lifecycle' ? (
             <LifecyclePage
             pendingIngredient={pendingIngredient}

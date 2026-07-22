@@ -7,17 +7,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { supabaseGet, type WeeklyReport } from '@/lib/supabase'
 
-// ---- Supabase 数据源（常量写死） ----
-const SUPABASE_URL = 'https://xtwqcjxtekoxuntpdsiq.supabase.co'
-const SUPABASE_ANON_KEY = 'sb_publishable_E5YZTMxNds-Lh5BxjzK3nA_IaY_gd6s'
-
-interface WeeklyReport {
-  id: number
-  period: string
-  batch: string | null
-  generated_at: string
-}
 
 interface FeedItem {
   id: number
@@ -32,16 +23,6 @@ interface FeedItem {
   item_date: string | null
 }
 
-async function supabaseGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-  })
-  if (!res.ok) throw new Error(`请求失败（HTTP ${res.status}）`)
-  return res.json() as Promise<T>
-}
 
 // ---- 事件类型徽章配色 ----
 const TYPE_STYLES: { match: RegExp; cls: string }[] = [
