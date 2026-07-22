@@ -17,12 +17,6 @@ interface ReportCardSpec {
 
 const UPCOMING_ENTITY_REPORTS: ReportCardSpec[] = [
   {
-    icon: Stethoscope,
-    title: '《疾病治疗格局报告》',
-    desc: '以疾病为主线的治疗全景与竞争密度分析',
-    chapters: ['治疗全景', '竞争密度', '全球可及', '在研管线', '证据热度', '近期动态'],
-  },
-  {
     icon: Building2,
     title: '《企业管线画像报告》',
     desc: '以企业为主线的获批产品与管线成分盘点',
@@ -60,13 +54,15 @@ function UpcomingCard({ spec }: { spec: ReportCardSpec }) {
   )
 }
 
-export default function ReportsPage({ onGoAPI, onGoFeed, onSelectIngredient }: {
+export default function ReportsPage({ onGoAPI, onGoFeed, onSelectIngredient, onGoDiseases }: {
   /** 跳转成分透视 tab（报告 B 的生成入口） */
   onGoAPI: () => void
   /** 跳转研发情报 tab（周报详情） */
   onGoFeed: () => void
   /** 跳转生命周期页并展开某个成分（报告 C 清单点击） */
   onSelectIngredient: (ing: string) => void
+  /** 跳转疾病视角 tab（报告 A 的生成入口） */
+  onGoDiseases: () => void
 }) {
   const [reports, setReports] = useState<WeeklyReport[] | null>(null)
   const [reportsError, setReportsError] = useState<string | null>(null)
@@ -132,6 +128,35 @@ export default function ReportsPage({ onGoAPI, onGoFeed, onSelectIngredient }: {
           </Card>
 
           {UPCOMING_ENTITY_REPORTS.map((spec) => <UpcomingCard key={spec.title} spec={spec} />)}
+
+          {/* 报告 A：已上线 */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2">
+                <Stethoscope className="h-5 w-5 text-blue-600" />
+                <p className="font-semibold text-slate-900">《疾病治疗格局报告》</p>
+                <Badge className="ml-auto bg-blue-600 font-normal">已上线</Badge>
+              </div>
+              <p className="mt-2 text-sm text-slate-500">
+                任一疾病的治疗全景、竞争密度、全球可及性、学术证据、在研管线与近期新分子，单栏叙事文档，支持浏览器导出 PDF。
+              </p>
+              <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-0.5">
+                {['治疗全景', '竞争密度', '全球可及', '学术证据', '在研管线', '近期新分子'].map((c) => (
+                  <li key={c} className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <span className="h-1 w-1 rounded-full bg-blue-300" />
+                    {c}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={onGoDiseases}
+                className="mt-4 flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                去选择疾病
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 

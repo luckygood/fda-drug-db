@@ -273,6 +273,7 @@ export default function App() {
               onGoAPI={() => { setPage('api'); setView({ kind: 'list' }) }}
               onGoFeed={() => { setPage('feed'); setView({ kind: 'list' }) }}
               onSelectIngredient={openLifecycleIngredient}
+              onGoDiseases={() => { setPage('diseases'); setView({ kind: 'list' }) }}
             />
           ) : page === 'lifecycle' ? (
             <LifecyclePage

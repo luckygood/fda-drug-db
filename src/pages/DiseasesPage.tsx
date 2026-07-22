@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
-import { Search, Loader2, Stethoscope, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { Search, Loader2, Stethoscope, ChevronDown, ChevronUp, AlertTriangle, FileText } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table'
 import EChart from '@/components/EChart'
 import DiseasePubMedPanel from '@/components/DiseasePubMedPanel'
+import DiseaseReport from '@/components/DiseaseReport'
 import DrugSummaryCards from '@/components/DrugSummaryCards'
 import { StatusBadge, TypeBadge } from '@/components/StatusBadge'
 import {
@@ -45,6 +46,7 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [selected, setSelected] = useState<DiseaseIndexEntry | null>(null)
+  const [reportMode, setReportMode] = useState(false)
   const [detail, setDetail] = useState<DiseaseDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -101,6 +103,7 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
     setShowDropdown(false)
     setDetail(null)
     setExpanded(new Set())
+    setReportMode(false) // 切换疾病时自动退出报告视图
     setDetailLoading(true)
     loadDisease(entry.slug)
       .then(setDetail)
@@ -254,14 +257,28 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
         </div>
       )}
 
-      {!detailLoading && detail && selected && (
+      {/* 报告视图（报告 A：疾病治疗格局报告） */}
+      {!detailLoading && detail && selected && reportMode && (
+        <DiseaseReport entry={selected} onBack={() => setReportMode(false)} />
+      )}
+
+      {!detailLoading && detail && selected && !reportMode && (
         <>
           {/* 摘要卡片 */}
           <div>
-            <h2 className="text-xl font-bold text-slate-900">
-              {detail.name_zh}
-              <span className="ml-2 text-base font-normal text-slate-400">{detail.name_en}</span>
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-bold text-slate-900">
+                {detail.name_zh}
+                <span className="ml-2 text-base font-normal text-slate-400">{detail.name_en}</span>
+              </h2>
+              <button
+                onClick={() => setReportMode(true)}
+                className="no-print flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
+              >
+                <FileText className="h-4 w-4" />
+                报告视图
+              </button>
+            </div>
             <div className="mt-3 grid grid-cols-2 gap-4 lg:grid-cols-4">
               <Card>
                 <CardContent className="pt-5">
