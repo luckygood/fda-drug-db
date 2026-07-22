@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Loader2, Search, ChevronDown, ChevronRight, ArrowUpDown, Hourglass, ArrowRight } from 'lucide-react'
+import { Loader2, Search, ChevronDown, ChevronRight, ArrowUpDown, Hourglass, ArrowRight, GitCompareArrows, X } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import PubMedEvidence from '@/components/PubMedEvidence'
+import IngredientCompare from '@/components/IngredientCompare'
 import {
   loadLifecycleIndex, loadIngredientPubMed, loadEntityMap, loadDiseaseIndex,
   type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex, type EntityMap,
@@ -180,6 +181,25 @@ export default function LifecyclePage({
   const [sortAsc, setSortAsc] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [shown, setShown] = useState(PAGE_SIZE)
+  // 对比模式
+  const [compareMode, setCompareMode] = useState(false)
+  const [selected, setSelected] = useState<string[]>([])
+  const [comparing, setComparing] = useState(false)
+
+  const toggleCompareMode = () => {
+    setCompareMode((v) => !v)
+    setSelected([])
+    setComparing(false)
+    setExpanded(null)
+  }
+
+  const toggleSelect = (ing: string) => {
+    setSelected((prev) => {
+      if (prev.includes(ing)) return prev.filter((x) => x !== ing)
+      if (prev.length >= 4) return prev
+      return [...prev, ing]
+    })
+  }
 
   useEffect(() => {
     loadLifecycleIndex()
@@ -281,8 +301,24 @@ export default function LifecyclePage({
         <span className="text-xs text-slate-400">
           共 {data.total_ingredients.toLocaleString()} 个活性成分 · 数据生成于 {data.generated_at}
         </span>
+        <button
+          onClick={toggleCompareMode}
+          className={cn(
+            'ml-auto flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+            compareMode
+              ? 'border-blue-500 bg-blue-600 text-white hover:bg-blue-700'
+              : 'border-slate-200 text-slate-600 hover:bg-slate-50',
+          )}
+        >
+          <GitCompareArrows className="h-3.5 w-3.5" />
+          {compareMode ? '退出对比模式' : '对比模式'}
+        </button>
       </div>
 
+      {comparing ? (
+        <IngredientCompare ingredients={selected} onBack={() => setComparing(false)} />
+      ) : (
+      <>
       {/* 1. 阶段汇总卡片 */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {STAGES.map((s) => {
@@ -326,6 +362,26 @@ export default function LifecyclePage({
             </div>
           </div>
 
+          {compareMode && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-blue-100 bg-blue-50/50 px-3 py-2">
+              <span className="text-xs text-slate-500">点击行选择成分（最多 4 个，可跨阶段）：</span>
+              {selected.map((ing) => (
+                <span key={ing} className="flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-medium text-white">
+                  {ing}
+                  <button onClick={() => toggleSelect(ing)} title="移除"><X className="h-3 w-3" /></button>
+                </span>
+              ))}
+              <button
+                onClick={() => setComparing(true)}
+                disabled={selected.length < 2}
+                className="ml-auto flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <GitCompareArrows className="h-3.5 w-3.5" />
+                开始对比（{selected.length}/4）
+              </button>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               <thead>
@@ -357,11 +413,23 @@ export default function LifecyclePage({
                   return (
                     <Fragment key={r.ingredient}>
                       <tr
-                        onClick={() => setExpanded(open ? null : r.ingredient)}
-                        className={cn('cursor-pointer border-b border-slate-100 hover:bg-slate-50', open && 'bg-blue-50/40')}
+                        onClick={() => (compareMode ? toggleSelect(r.ingredient) : setExpanded(open ? null : r.ingredient))}
+                        className={cn(
+                          'cursor-pointer border-b border-slate-100 hover:bg-slate-50',
+                          open && !compareMode && 'bg-blue-50/40',
+                          compareMode && selected.includes(r.ingredient) && 'bg-blue-50/70',
+                        )}
                       >
                         <td className={tdCls}>
-                          {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+                          {compareMode ? (
+                            <input
+                              type="checkbox"
+                              readOnly
+                              checked={selected.includes(r.ingredient)}
+                              disabled={!selected.includes(r.ingredient) && selected.length >= 4}
+                              className="h-4 w-4 accent-blue-600"
+                            />
+                          ) : open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
                         </td>
                         {/* 成分：名称 + PLCM 徽标 + 风险小标签 */}
                         <td className={tdCls}>
@@ -396,7 +464,7 @@ export default function LifecyclePage({
                           <CompetitionCell r={r} stage={stage} />
                         </td>
                       </tr>
-                      {open && (
+                      {open && !compareMode && (
                         <tr className="border-b border-slate-100 bg-slate-50/60">
                           <td colSpan={5} className="px-6 py-4">
                             <div className="space-y-3">
@@ -469,6 +537,8 @@ export default function LifecyclePage({
           )}
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   )
 }
