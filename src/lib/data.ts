@@ -1068,6 +1068,8 @@ export interface GlobalAccessRecord {
   ema_first_date: string | null
   ema_product: string | null
   match_type: 'exact' | 'normalized' | 'unmatched'
+  pmda_status: 'approved' | 'not_found' | null
+  pmda_first_date: string | null
 }
 
 export interface GlobalAccess {
@@ -1075,6 +1077,8 @@ export interface GlobalAccess {
   scope: string
   ema_source_url: string
   ema_timestamp: string
+  pmda_source_url?: string
+  pmda_page_url?: string
   stats: Record<string, number>
   records: Record<string, GlobalAccessRecord>
 }

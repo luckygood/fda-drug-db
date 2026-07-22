@@ -41,6 +41,21 @@ SALT_TOKENS = {
     "ANHYDROUS", "MICRONIZED", "FREE", "BASE", "ACID",
 }
 
+# USAN → INN 命名差异映射（仅收录确信的 1:1 对应）
+USAN_TO_INN = {
+    "ACETAMINOPHEN": "PARACETAMOL",
+    "EPINEPHRINE": "ADRENALINE",
+    "NOREPINEPHRINE": "NORADRENALINE",
+    "ALBUTEROL": "SALBUTAMOL",
+    "ISOPROTERENOL": "ISOPRENALINE",
+    "MEPERIDINE": "PETHIDINE",
+    "RIFAMPIN": "RIFAMPICIN",
+    "TETRACAINE": "AMETHOCAINE",
+    "PHENOBARBITAL": "PHENOBARBITONE",
+    "AMPHETAMINE": "AMFETAMINE",
+    "CYCLOSPORINE": "CICLOSPORIN",
+}
+
 # EMA 状态归一
 STATUS_MAP = {
     "Authorised": "authorised",
@@ -85,14 +100,97 @@ def combo_key(name):
 
 
 def norm_keys(name):
-    """为一个名字生成匹配键集合（原名 + 去盐基）。"""
+    """为一个名字生成匹配键集合（原名 + 去盐基 + 美版生物类似药四字母后缀剥离 + USAN→INN）。"""
     name = re.sub(r"\([^)]*\)", " ", name)
     u = re.sub(r"\s+", " ", name.strip().upper())
     keys = {u}
     stripped = strip_salts(u)
     if stripped != u:
         keys.add(stripped)
+    # 美国生物类似药后缀（ADALIMUMAB-AACF → ADALIMUMAB），便于命中 EMA 参比制剂
+    for k in list(keys):
+        base = re.sub(r"-[A-Z]{4}$", "", k)
+        if base != k and len(base) > 4:
+            keys.add(base)
+    # USAN → INN 全名映射
+    for k in list(keys):
+        inn = USAN_TO_INN.get(k)
+        if inn:
+            keys.add(inn)
     return keys
+
+
+# ---------- PMDA（日本）解析 ----------
+
+PMDA_URL = "https://www.pmda.go.jp/files/000281190.pdf"
+PMDA_PAGE_URL = "https://www.pmda.go.jp/english/review-services/reviews/approved-information/drugs/0002.html"
+PMDA_CACHE = Path("/tmp/pmda_approved.pdf")
+
+_PMDA_DATE = re.compile(r"((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.? \d{1,2}, \d{4})")
+_PMDA_NOTE_CUT = re.compile(
+    r"(A drug|Drugs with|A fixed|A new|An (?:anti|HIV|oral)|For the treatment|\[Orphan|\(\d+\) A drug)")
+_PMDA_MONTHS = {m: i + 1 for i, m in enumerate(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])}
+
+
+def download_pmda(path):
+    req = urllib.request.Request(PMDA_URL, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=240) as resp:
+        path.write_bytes(resp.read())
+
+
+def _pmda_iso(date_str):
+    m = re.match(r"([A-Za-z]{3})\.? (\d{1,2}), (\d{4})", date_str)
+    if not m:
+        return None
+    mon = _PMDA_MONTHS.get(m.group(1))
+    if not mon:
+        return None
+    return f"{m.group(3)}-{mon:02d}-{int(m.group(2)):02d}"
+
+
+def load_pmda(path):
+    """解析 PMDA《List of Approved Drugs》PDF，返回 {匹配键: {date, ingredient}}。
+
+    文本结构：每个月度小节内，每条记录为
+    `<类别> <日期> <序号> <品牌名(企业)> <Approval/Change>+ <活性成分> <备注>`。
+    活性成分区域 = 最后一个 Approval/Change 标记之后、备注起始词之前。
+    """
+    from pypdf import PdfReader  # 托管运行时自带
+
+    if not path.exists():
+        print(f"下载 PMDA 数据 -> {path}")
+        download_pmda(path)
+    reader = PdfReader(str(path))
+    text = "\n".join((p.extract_text() or "") for p in reader.pages)
+
+    hits = {}  # key -> {"date": iso, "ingredient": raw}
+    marks = list(_PMDA_DATE.finditer(text))
+    for i, m in enumerate(marks):
+        block_end = marks[i + 1].start() if i + 1 < len(marks) else len(text)
+        block = text[m.start():block_end]
+        iso = _pmda_iso(m.group(1))
+        if not iso:
+            continue
+        # 活性成分区域：最后一个 Approval/Change 之后
+        seps = list(re.finditer(r"\b(?:Approval|Change)\b", block))
+        if not seps:
+            continue
+        region = block[seps[-1].end():]
+        cut = _PMDA_NOTE_CUT.search(region)
+        if cut:
+            region = region[:cut.start()]
+        ing = re.sub(r"\s+", " ", region).strip(" .;,")
+        ing = re.sub(r"\(genetical recombination\)", "", ing, flags=re.I).strip(" .;,")
+        if not ing or len(ing) < 3 or len(ing) > 200:
+            continue
+        for key in norm_keys(ing):
+            ck = combo_key(key)
+            for k in ([key] + ([ck] if ck else [])):
+                cur = hits.get(k)
+                if not cur or iso < cur["date"]:
+                    hits[k] = {"date": iso, "ingredient": ing}
+    return hits, len(reader.pages)
 
 
 def main():
@@ -140,9 +238,14 @@ def main():
             if ck:
                 ema_by_key[ck].append(r)
 
+    # ---------- PMDA 索引 ----------
+    pmda_hits, pmda_pages = load_pmda(PMDA_CACHE)
+    print(f"PMDA 记录: {len(pmda_hits)} 个匹配键（PDF {pmda_pages} 页）")
+
     # ---------- 匹配 ----------
     records = {}
-    stats = {"authorised": 0, "withdrawn": 0, "refused": 0, "other": 0, "unmatched": 0}
+    stats = {"authorised": 0, "withdrawn": 0, "refused": 0, "other": 0, "unmatched": 0,
+             "pmda_approved": 0, "pmda_not_found": 0}
     matched_samples, unmatched = [], []
 
     for ing in sorted(target):
@@ -150,6 +253,14 @@ def main():
         ck = combo_key(ing)
         if ck:
             keys.add(ck)
+
+        # PMDA 匹配（无论 EMA 是否命中都执行）
+        pmda_status, pmda_first = "not_found", None
+        for k in keys:
+            if k in pmda_hits:
+                pmda_status, pmda_first = "approved", pmda_hits[k]["date"]
+                break
+        stats["pmda_approved" if pmda_status == "approved" else "pmda_not_found"] += 1
 
         hits = []
         match_type = "unmatched"
@@ -163,6 +274,7 @@ def main():
             records[ing] = {
                 "ema_status": None, "ema_first_date": None,
                 "ema_product": None, "match_type": "unmatched",
+                "pmda_status": pmda_status, "pmda_first_date": pmda_first,
             }
             stats["unmatched"] += 1
             unmatched.append(ing)
@@ -204,6 +316,8 @@ def main():
             "ema_first_date": first_date,
             "ema_product": product,
             "match_type": match_type,
+            "pmda_status": pmda_status,
+            "pmda_first_date": pmda_first,
         }
         stats[overall] = stats.get(overall, 0) + 1
         if len(matched_samples) < 5:
@@ -214,6 +328,8 @@ def main():
         "scope": "fda_nda_2020plus",
         "ema_source_url": EMA_URL,
         "ema_timestamp": ema["meta"]["timestamp"],
+        "pmda_source_url": PMDA_URL,
+        "pmda_page_url": PMDA_PAGE_URL,
         "stats": {"total": len(target), **stats},
         "records": records,
     }
@@ -224,7 +340,8 @@ def main():
     print(f"\n=== 匹配统计 ===")
     print(f"总数: {len(target)}")
     for k in ("authorised", "withdrawn", "refused", "other", "unmatched"):
-        print(f"  {k}: {stats.get(k, 0)}")
+        print(f"  EMA {k}: {stats.get(k, 0)}")
+    print(f"  PMDA 已获批: {stats['pmda_approved']}  未收录: {stats['pmda_not_found']}")
     print(f"输出: {out_path} ({out_path.stat().st_size/1024:.0f} KB)")
     print("\n匹配样例（前 5）:")
     for s in matched_samples:
