@@ -8,6 +8,7 @@ import {
   type APIIndexEntry, type APIDetail,
 } from '@/lib/data'
 import { StatusBadge, TypeBadge } from '@/components/StatusBadge'
+import IngredientEntityPanel from '@/components/IngredientEntityPanel'
 
 const COLORS: Record<string, string> = {
   pioneer: '#2563eb',
@@ -42,11 +43,16 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 interface APIPageProps {
   onSelectDrug: (applicationNumber: string) => void
   onSelectDisease?: (slug: string) => void
+  /** 点击企业跳转企业画像 */
+  onSelectCompany?: (slug: string) => void
   pendingAPI?: string | null
   onConsumePendingAPI?: () => void
+  /** 跨页传入的成分名（生命周期页"查看完整实体页"），按 api_name 定位 */
+  pendingAPIName?: string | null
+  onConsumePendingAPIName?: () => void
 }
 
-export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onConsumePendingAPI }: APIPageProps) {
+export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany, pendingAPI, onConsumePendingAPI, pendingAPIName, onConsumePendingAPIName }: APIPageProps) {
   const [index, setIndex] = useState<APIIndexEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -178,6 +184,17 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAPI, index])
+
+  // 消费跨页传入的成分名（按 api_name 精确匹配）
+  useEffect(() => {
+    if (pendingAPIName && index) {
+      const target = pendingAPIName.toUpperCase()
+      const entry = index.find((a) => a.api_name === target)
+      if (entry) selectAPI(entry)
+      onConsumePendingAPIName?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAPIName, index])
 
   const selectAPI = (entry: APIIndexEntry) => {
     setShowSugg(false)
@@ -647,6 +664,14 @@ export default function APIPage({ onSelectDrug, onSelectDisease, pendingAPI, onC
               )}
             </CardContent>
           </Card>
+
+          {/* 生命周期档案 + 统一时间轴 + 关联实体（旗舰视图） */}
+          <IngredientEntityPanel
+            apiName={detail.api_name}
+            products={detail.products}
+            onSelectDisease={onSelectDisease}
+            onSelectCompany={onSelectCompany}
+          />
 
           {/* 申请类型分布 + 疾病关联 */}
           <div className="grid gap-6 lg:grid-cols-2">

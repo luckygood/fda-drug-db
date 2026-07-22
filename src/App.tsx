@@ -66,6 +66,7 @@ export default function App() {
   const [pendingCompany, setPendingCompany] = useState<string | null>(null)
   const [pendingAPI, setPendingAPI] = useState<string | null>(null)
   const [pendingIngredient, setPendingIngredient] = useState<string | null>(null)
+  const [pendingAPIName, setPendingAPIName] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(COLLAPSE_KEY) === '1' } catch { return false }
   })
@@ -103,6 +104,13 @@ export default function App() {
 
   const openAPI = (slug: string) => {
     setPendingAPI(slug)
+    setPage('api')
+    setView({ kind: 'list' })
+  }
+
+  /** 跨页跳转：在成分透视页按成分名打开完整实体页 */
+  const openAPIByName = (apiName: string) => {
+    setPendingAPIName(apiName)
     setPage('api')
     setView({ kind: 'list' })
   }
@@ -250,8 +258,11 @@ export default function App() {
             <APIPage
               pendingAPI={pendingAPI}
               onConsumePendingAPI={() => setPendingAPI(null)}
+              pendingAPIName={pendingAPIName}
+              onConsumePendingAPIName={() => setPendingAPIName(null)}
               onSelectDrug={(appNo) => openDetail(appNo, 'api')}
               onSelectDisease={openDisease}
+              onSelectCompany={openCompany}
             />
           ) : page === 'feed' ? (
             <FeedPage />
@@ -261,6 +272,7 @@ export default function App() {
             onConsumePendingIngredient={() => setPendingIngredient(null)}
             onSelectDisease={openDisease}
             onSelectCompany={openCompany}
+            onOpenEntityPage={openAPIByName}
           />
           ) : (
             <SearchPage onSelect={(appNo) => openDetail(appNo, 'search')} />

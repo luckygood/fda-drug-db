@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Loader2, Search, ChevronDown, ChevronRight, ArrowUpDown, Hourglass, BookOpen } from 'lucide-react'
+import { Loader2, Search, ChevronDown, ChevronRight, ArrowUpDown, Hourglass, ArrowRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import PubMedEvidence from '@/components/PubMedEvidence'
 import {
   loadLifecycleIndex, loadIngredientPubMed, loadEntityMap, loadDiseaseIndex,
   type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex, type EntityMap,
@@ -100,51 +101,6 @@ function CompetitionCell({ r, stage }: { r: LifecycleRecord; stage: StageKey }) 
   )
 }
 
-/** 引入期成分的 PubMed 证据块（2023-2026） */
-function PubMedBlock({ ingredient, pubmed }: { ingredient: string; pubmed: IngredientPubMedIndex | null }) {
-  const entry = pubmed?.ingredients[ingredient]
-  const empty = !entry || (!(entry.clinical_count ?? 0) && !(entry.review_count ?? 0) && entry.recent.length === 0)
-  return (
-    <div>
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-        <BookOpen className="h-3.5 w-3.5" />
-        PubMed 证据（2023-2026）
-      </p>
-      {empty ? (
-        <p className="text-xs text-slate-400">近3年暂无论文收录</p>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
-              临床研究与随机对照 <b>{entry.clinical_count ?? 0}</b>
-            </span>
-            <span className="rounded bg-sky-50 px-2 py-1 text-xs text-sky-700">
-              综述与Meta <b>{entry.review_count ?? 0}</b>
-            </span>
-          </div>
-          {entry.recent.length > 0 && (
-            <ul className="space-y-1">
-              {entry.recent.slice(0, 5).map((a) => (
-                <li key={a.pmid} className="text-xs leading-relaxed">
-                  <a
-                    href={`https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {a.title}
-                  </a>
-                  <span className="ml-1.5 text-slate-400">{a.journal} · {a.pubdate.slice(0, 4)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 /** 成分实体关系块：疾病 / 企业 / 临床试验链接 */
 function EntityLinksBlock({ r, entityMap, diseaseNames, onSelectDisease, onSelectCompany }: {
   r: LifecycleRecord
@@ -202,6 +158,8 @@ interface LifecyclePageProps {
   onSelectDisease?: (slug: string) => void
   /** 点击企业 chip 跳转企业画像页 */
   onSelectCompany?: (slug: string) => void
+  /** 跳转成分透视页的完整实体页 */
+  onOpenEntityPage?: (ingredient: string) => void
 }
 
 export default function LifecyclePage({
@@ -209,6 +167,7 @@ export default function LifecyclePage({
   onConsumePendingIngredient,
   onSelectDisease,
   onSelectCompany,
+  onOpenEntityPage,
 }: LifecyclePageProps) {
   const [data, setData] = useState<LifecycleIndex | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -463,7 +422,9 @@ export default function LifecyclePage({
                               ) : (
                                 <p className="text-xs text-slate-400">暂无识别到的 PLCM 动作。</p>
                               )}
-                              {stage === '引入期' && <PubMedBlock ingredient={r.ingredient} pubmed={pubmed} />}
+                              {stage === '引入期' && (
+                                <PubMedEvidence entry={pubmed?.ingredients[r.ingredient]} compact />
+                              )}
                               <EntityLinksBlock
                                 r={r}
                                 entityMap={entityMap}
@@ -471,6 +432,17 @@ export default function LifecyclePage({
                                 onSelectDisease={onSelectDisease}
                                 onSelectCompany={onSelectCompany}
                               />
+                              {onOpenEntityPage && (
+                                <div>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); onOpenEntityPage(r.ingredient) }}
+                                    className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                  >
+                                    查看完整实体页
+                                    <ArrowRight className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>
