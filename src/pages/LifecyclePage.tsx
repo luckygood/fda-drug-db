@@ -4,8 +4,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import IngredientCompare from '@/components/IngredientCompare'
 import {
-  loadLifecycleIndex, loadIngredientPubMed, loadEntityMap, loadDiseaseIndex,
-  type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex, type EntityMap,
+  loadLifecycleIndex, loadIngredientPubMed, loadEntityMap, loadDiseaseIndex, loadGlobalAccess,
+  type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex, type EntityMap, type GlobalAccessRecord,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -175,6 +175,7 @@ export default function LifecyclePage({
   const [pubmed, setPubmed] = useState<IngredientPubMedIndex | null>(null)
   const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
   const [diseaseNames, setDiseaseNames] = useState<Record<string, string>>({})
+  const [globalAccess, setGlobalAccess] = useState<Record<string, GlobalAccessRecord> | null>(null)
   const [stage, setStage] = useState<StageKey>('引入期')
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('first_approval')
@@ -211,6 +212,9 @@ export default function LifecyclePage({
     loadDiseaseIndex()
       .then((d) => setDiseaseNames(Object.fromEntries(d.diseases.map((x) => [x.slug, x.name_zh]))))
       .catch(() => setDiseaseNames({}))
+    loadGlobalAccess()
+      .then((d) => setGlobalAccess(d.records))
+      .catch(() => setGlobalAccess(null))
   }, [])
 
   // 消费跨页传入的成分：切到其所在阶段、检索并展开
@@ -468,10 +472,30 @@ export default function LifecyclePage({
                         <tr className="border-b border-slate-100 bg-slate-50/60">
                           <td colSpan={5} className="px-6 py-4">
                             <div className="space-y-3">
-                              <p className="text-sm text-slate-700">
-                                <span className="mr-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">观察要点</span>
-                                {observation(r)}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm text-slate-700">
+                                  <span className="mr-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">观察要点</span>
+                                  {observation(r)}
+                                </p>
+                                {(() => {
+                                  const ga = globalAccess?.[r.ingredient]
+                                  if (!ga) return null
+                                  if (ga.match_type === 'unmatched' || !ga.ema_status) {
+                                    return <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">🇪🇺 EMA 未收录</span>
+                                  }
+                                  if (ga.ema_status === 'authorised') {
+                                    return (
+                                      <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs text-emerald-700" title={ga.ema_product ?? undefined}>
+                                        🇪🇺 EMA 已授权{ga.ema_first_date ? ` ${ga.ema_first_date.slice(0, 4)}` : ''}
+                                      </span>
+                                    )
+                                  }
+                                  if (ga.ema_status === 'withdrawn') {
+                                    return <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-700">🇪🇺 EMA 已撤市</span>
+                                  }
+                                  return <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">🇪🇺 EMA {ga.ema_status === 'refused' ? '已拒绝' : '其他状态'}</span>
+                                })()}
+                              </div>
                               {r.plcm_actions.length > 0 ? (
                                 <div>
                                   <p className="mb-2 text-xs font-medium text-slate-500">PLCM 生命周期管理动作</p>

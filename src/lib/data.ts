@@ -1060,3 +1060,34 @@ export function loadEntityMap(): Promise<EntityMap> {
   }
   return entityMapPromise
 }
+
+// ---------- 全球可及性：FDA×EMA 批准对齐 ----------
+
+export interface GlobalAccessRecord {
+  ema_status: 'authorised' | 'withdrawn' | 'refused' | 'other' | null
+  ema_first_date: string | null
+  ema_product: string | null
+  match_type: 'exact' | 'normalized' | 'unmatched'
+}
+
+export interface GlobalAccess {
+  generated_at: string
+  scope: string
+  ema_source_url: string
+  ema_timestamp: string
+  stats: Record<string, number>
+  records: Record<string, GlobalAccessRecord>
+}
+
+let globalAccessPromise: Promise<GlobalAccess> | null = null
+
+export function loadGlobalAccess(): Promise<GlobalAccess> {
+  if (!globalAccessPromise) {
+    globalAccessPromise = fetch(`${import.meta.env.BASE_URL}data/global_access.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`global_access.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<GlobalAccess>
+      })
+  }
+  return globalAccessPromise
+}

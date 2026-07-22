@@ -6,8 +6,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import {
-  loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadSponsorMap, resolveCompanySlug,
-  type LifecycleRecord, type EntityMap, type IngredientPubMedIndex, type APIProduct,
+  loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadSponsorMap, loadGlobalAccess, resolveCompanySlug,
+  type LifecycleRecord, type EntityMap, type IngredientPubMedIndex, type APIProduct, type GlobalAccessRecord,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -94,6 +94,7 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
   const [diseaseNames, setDiseaseNames] = useState<Record<string, string>>({})
   const [pubmed, setPubmed] = useState<IngredientPubMedIndex | null>(null)
   const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
+  const [globalRec, setGlobalRec] = useState<GlobalAccessRecord | null>(null)
 
   useEffect(() => {
     loadLifecycleIndex()
@@ -105,6 +106,9 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
       .catch(() => setDiseaseNames({}))
     loadIngredientPubMed().then(setPubmed).catch(() => setPubmed(null))
     loadSponsorMap().then(setSponsorMap).catch(() => setSponsorMap(null))
+    loadGlobalAccess()
+      .then((d) => setGlobalRec(d.records[apiName.toUpperCase()] ?? null))
+      .catch(() => setGlobalRec(null))
   }, [apiName])
 
   const links = entityMap?.ingredients[apiName.toUpperCase()]
@@ -177,6 +181,49 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
               </p>
             </div>
           </div>
+
+          {/* 全球批准：FDA × EMA（范围：2020 年至今 FDA 获批 NDA/BLA） */}
+          {globalRec && (
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                  🇺🇸 FDA
+                  <span className="font-normal text-blue-600">{rec.first_approval ? `${rec.first_approval.slice(0, 4)} 获批` : '已获批'}</span>
+                </span>
+                {globalRec.match_type === 'unmatched' || !globalRec.ema_status ? (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
+                    🇪🇺 EMA
+                    <span className="font-normal">未收录</span>
+                  </span>
+                ) : globalRec.ema_status === 'authorised' ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700"
+                    title={globalRec.ema_product ? `EMA 产品：${globalRec.ema_product}` : undefined}
+                  >
+                    🇪🇺 EMA
+                    <span className="font-normal">
+                      已授权{globalRec.ema_first_date ? ` ${globalRec.ema_first_date.slice(0, 4)}` : ''}
+                      {globalRec.ema_product ? ` · ${globalRec.ema_product}` : ''}
+                    </span>
+                  </span>
+                ) : globalRec.ema_status === 'withdrawn' ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700"
+                    title={globalRec.ema_product ? `EMA 产品：${globalRec.ema_product}` : undefined}
+                  >
+                    🇪🇺 EMA
+                    <span className="font-normal">已撤市{globalRec.ema_product ? ` · ${globalRec.ema_product}` : ''}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
+                    🇪🇺 EMA
+                    <span className="font-normal">{globalRec.ema_status === 'refused' ? '已拒绝' : '其他状态'}</span>
+                  </span>
+                )}
+                <span className="text-xs text-slate-400">范围：2020 年至今 FDA 获批 NDA/BLA · EMA 集中审批</span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
