@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Loader2, Printer, ExternalLink } from 'lucide-react'
 import {
   loadLifecycleIndex, loadEntityMap, loadGlobalAccess, loadDiseasePubMed,
+  loadLabelSummary, loadReportMetrics,
   type LifecycleRecord, type EntityMap, type GlobalAccess, type DiseasePubMedEntry,
-  type DiseaseIndexEntry,
+  type DiseaseIndexEntry, type LabelSummary, type ReportMetrics,
 } from '@/lib/data'
+import { diseaseInsights } from '@/lib/insights'
 import { cn } from '@/lib/utils'
 
 
@@ -31,6 +33,21 @@ function Muted({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-slate-400">{children}</p>
 }
 
+function InsightList({ items }: { items: { text: string; source: string }[] }) {
+  if (items.length === 0) return null
+  return (
+    <ul className="mb-3 space-y-1 rounded-md bg-slate-50 px-3 py-2">
+      {items.map((it, i) => (
+        <li key={i} className="text-xs leading-relaxed text-slate-600">
+          <span className="mr-1 font-medium text-blue-700">◆</span>
+          {it.text}
+          <span className="ml-1 text-slate-400">{it.source}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export default function DiseaseReport({ entry, onBack }: {
   entry: DiseaseIndexEntry
   onBack: () => void
@@ -41,6 +58,8 @@ export default function DiseaseReport({ entry, onBack }: {
   const [pubmed, setPubmed] = useState<DiseasePubMedEntry | null>(null)
   const [pubmedWindow, setPubmedWindow] = useState('近三年')
   const [generatedAt, setGeneratedAt] = useState('')
+  const [labelSummary, setLabelSummary] = useState<LabelSummary | null>(null)
+  const [metrics, setMetrics] = useState<ReportMetrics | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -51,6 +70,8 @@ export default function DiseaseReport({ entry, onBack }: {
       loadDiseasePubMed()
         .then((d) => { setPubmed(d.diseases[entry.slug] ?? null); if (d.window) setPubmedWindow(d.window.replace(':', '–')) })
         .catch(() => setPubmed(null)),
+      loadLabelSummary().then(setLabelSummary).catch(() => setLabelSummary(null)),
+      loadReportMetrics().then(setMetrics).catch(() => setMetrics(null)),
     ]).finally(() => setLoading(false))
   }, [entry.slug])
 
@@ -120,6 +141,28 @@ export default function DiseaseReport({ entry, onBack }: {
       .slice(0, 5)
   }, [withRec])
 
+  // 规则模板解读（疾病级衍生指标；缺指标时为空数组）
+  const dMetrics = metrics?.diseases[entry.slug]
+  const insights = useMemo(
+    () => diseaseInsights(dMetrics, {
+      nameZh: entry.name_zh,
+      topCompanyName: dMetrics?.top_company
+        ? entityMap?.companies[dMetrics.top_company]?.name ?? dMetrics.top_company
+        : undefined,
+    }),
+    [dMetrics, entry.name_zh, entityMap],
+  )
+
+  // 说明书要点摘录：取疾病成分中有标签摘要的前 5 个（引入期/新获批优先）
+  const labelPicks = useMemo(() => {
+    if (!labelSummary) return []
+    return withRec
+      .filter(({ ing }) => labelSummary.ingredients[ing]?.efficacy || labelSummary.ingredients[ing]?.safety)
+      .sort((a, b) => (b.rec?.first_approval ?? '').localeCompare(a.rec?.first_approval ?? ''))
+      .slice(0, 5)
+      .map(({ ing }) => ({ ing, card: labelSummary.ingredients[ing] }))
+  }, [labelSummary, withRec])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-20 text-slate-400">
@@ -130,6 +173,8 @@ export default function DiseaseReport({ entry, onBack }: {
   }
 
   const todayStr = generatedAt || new Date().toISOString().slice(0, 10)
+  const crowdInsight = dMetrics && dMetrics.crowded_bucket !== '中位' ? insights.slice(0, 1) : []
+  const hhiInsights = insights.slice(crowdInsight.length)
   const stageKeys = [...STAGE_ORDER.filter((s) => byStage.has(s)), ...(byStage.has('未建档') ? ['未建档'] : [])]
 
   return (
@@ -165,6 +210,7 @@ export default function DiseaseReport({ entry, onBack }: {
 
       {/* 一、治疗全景 */}
       <Chapter title={`一、治疗全景（${ingredientsTotal} 个相关活性成分）`}>
+        <InsightList items={crowdInsight} />
         {ingredients.length === 0 ? (
           <Muted>该疾病暂无成分级实体映射，无法按生命周期阶段展开。</Muted>
         ) : (
@@ -198,8 +244,36 @@ export default function DiseaseReport({ entry, onBack }: {
         )}
       </Chapter>
 
-      {/* 二、竞争密度 */}
-      <Chapter title="二、竞争密度">
+      {/* 二、说明书要点摘录 */}
+      <Chapter title="二、说明书要点摘录（FDA 标签）">
+        {labelPicks.length === 0 ? (
+          <Muted>该疾病相关成分暂未生成说明书摘要卡（当前成分级覆盖率约 46%，优先覆盖近年新分子）。</Muted>
+        ) : (
+          <div className="space-y-3">
+            {labelPicks.map(({ ing, card }) => {
+              const eff = card.efficacy?.key_results?.[0]
+              const bw = card.safety?.boxed_warning
+              return (
+                <div key={ing} className="border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+                  <p className="text-sm font-medium text-slate-800">
+                    {ing}
+                    <span className="ml-2 text-xs font-normal text-slate-400">{card.drug_name} · {card.application_number}</span>
+                  </p>
+                  {eff && <p className="mt-0.5 text-xs leading-relaxed text-slate-600">疗效：{eff}</p>}
+                  {bw && <p className="mt-0.5 text-xs leading-relaxed text-amber-700">黑框警告：{bw}</p>}
+                </div>
+              )
+            })}
+            <p className="text-xs text-slate-400">
+              口径：摘自各成分最早原始 NDA/BLA 申请的首批准说明书（Drugs@FDA 标签全文自动提取），仅摘录不构成完整标签。
+            </p>
+          </div>
+        )}
+      </Chapter>
+
+      {/* 三、竞争密度 */}
+      <Chapter title="三、竞争密度">
+        <InsightList items={hhiInsights} />
         {!density ? (
           <Muted>实体关系数据未加载，无法计算竞争密度。</Muted>
         ) : (
@@ -219,8 +293,8 @@ export default function DiseaseReport({ entry, onBack }: {
         )}
       </Chapter>
 
-      {/* 三、全球可及性 */}
-      <Chapter title="三、全球可及性（FDA → EMA / PMDA）">
+      {/* 四、全球可及性 */}
+      <Chapter title="四、全球可及性（FDA → EMA / PMDA）">
         {!globalStats || globalStats.inScope.length === 0 ? (
           <Muted>
             该疾病成分均不在全球可及性专题范围内（专题口径：2020 年至今 FDA 首次获批的 NDA/BLA 活性成分）。
@@ -244,8 +318,8 @@ export default function DiseaseReport({ entry, onBack }: {
         )}
       </Chapter>
 
-      {/* 四、学术证据 */}
-      <Chapter title={`四、学术证据（PubMed ${pubmedWindow}）`}>
+      {/* 五、学术证据 */}
+      <Chapter title={`五、学术证据（PubMed ${pubmedWindow}）`}>
         {!pubmed ? (
           <Muted>该疾病暂未纳入 PubMed 证据覆盖（当前覆盖 22 个高数据量疾病）。</Muted>
         ) : (
@@ -278,8 +352,8 @@ export default function DiseaseReport({ entry, onBack }: {
         )}
       </Chapter>
 
-      {/* 五、在研管线 */}
-      <Chapter title="五、在研管线">
+      {/* 六、在研管线 */}
+      <Chapter title="六、在研管线">
         {trialsCoverage === 'not_covered' ? (
           <Muted>该疾病暂未接入临床试验索引（试验数据未覆盖，不代表无在研试验）。</Muted>
         ) : trialCount > 0 ? (
@@ -294,8 +368,8 @@ export default function DiseaseReport({ entry, onBack }: {
         </p>
       </Chapter>
 
-      {/* 六、近期重点新分子 */}
-      <Chapter title="六、近期重点新分子（引入期成分）">
+      {/* 七、近期重点新分子 */}
+      <Chapter title="七、近期重点新分子（引入期成分）">
         {recentNme.length === 0 ? (
           <Muted>该疾病当前无处于引入期的成分（近年无新分子获批记录）。</Muted>
         ) : (

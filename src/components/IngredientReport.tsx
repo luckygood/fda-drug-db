@@ -3,9 +3,12 @@ import { ChevronLeft, Loader2, Printer } from 'lucide-react'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import {
   loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadGlobalAccess,
+  loadLabelSummary, loadReportMetrics,
   type LifecycleRecord, type EntityMap, type IngredientPubMedIndex,
   type GlobalAccessRecord, type APIProduct,
+  type LabelSummaryEntry, type IngredientMetrics,
 } from '@/lib/data'
+import { ingredientInsights } from '@/lib/insights'
 import { cn } from '@/lib/utils'
 
 
@@ -92,6 +95,8 @@ export default function IngredientReport({ apiName, products, onBack }: {
   const [diseaseNames, setDiseaseNames] = useState<Record<string, string>>({})
   const [pubmed, setPubmed] = useState<IngredientPubMedIndex | null>(null)
   const [globalRec, setGlobalRec] = useState<GlobalAccessRecord | null>(null)
+  const [labelCard, setLabelCard] = useState<LabelSummaryEntry | null>(null)
+  const [ingMetrics, setIngMetrics] = useState<IngredientMetrics | null>(null)
   const [generatedAt, setGeneratedAt] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -109,8 +114,19 @@ export default function IngredientReport({ apiName, products, onBack }: {
       loadGlobalAccess()
         .then((d) => setGlobalRec(d.records[apiName.toUpperCase()] ?? null))
         .catch(() => setGlobalRec(null)),
+      loadLabelSummary()
+        .then((d) => setLabelCard(d.ingredients[apiName.toUpperCase()] ?? null))
+        .catch(() => setLabelCard(null)),
+      loadReportMetrics()
+        .then((d) => setIngMetrics(d.ingredients[apiName.toUpperCase()] ?? null))
+        .catch(() => setIngMetrics(null)),
     ]).finally(() => setLoading(false))
   }, [apiName])
+
+  const insights = useMemo(
+    () => (rec ? ingredientInsights(rec, ingMetrics ?? undefined) : []),
+    [rec, ingMetrics],
+  )
 
   const links = entityMap?.ingredients[apiName.toUpperCase()]
   const pubmedEntry = pubmed?.ingredients[apiName.toUpperCase()]
@@ -200,6 +216,17 @@ export default function IngredientReport({ apiName, products, onBack }: {
 
       {/* 一、概要 */}
       <Chapter title="一、概要">
+        {insights.length > 0 && (
+          <ul className="mb-3 space-y-1 rounded-md bg-slate-50 px-3 py-2">
+            {insights.map((it, i) => (
+              <li key={i} className="text-xs leading-relaxed text-slate-600">
+                <span className="mr-1 font-medium text-blue-700">◆</span>
+                {it.text}
+                <span className="ml-1 text-slate-400">{it.source}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         <dl className="divide-y divide-slate-100">
           {summaryRows.map(([k, v]) => (
             <div key={k} className="flex items-baseline gap-4 py-1.5">
@@ -300,16 +327,61 @@ export default function IngredientReport({ apiName, products, onBack }: {
         )}
       </Chapter>
 
-      {/* 五、学术证据 */}
-      <Chapter title="五、学术证据（PubMed 2023-2026）">
+      {/* 五、说明书要点 */}
+      <Chapter title="五、说明书要点（FDA 标签）">
+        {!labelCard ? (
+          <p className="text-sm text-slate-400">该成分暂未生成说明书摘要卡（当前成分级覆盖率约 46%，优先覆盖近年新分子）。</p>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-400">
+              来源：{labelCard.drug_name} · {labelCard.application_number}（最早原始 NDA/BLA 首批准标签，自动摘录）
+            </p>
+            {(labelCard.efficacy?.key_results?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-xs font-medium text-slate-500">疗效要点（{labelCard.efficacy!.source_section}）</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {labelCard.efficacy!.key_results.map((k, i) => (
+                    <li key={i} className="text-xs leading-relaxed text-slate-700">{k}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {labelCard.safety?.boxed_warning && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-xs font-semibold text-amber-800">黑框警告</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-amber-700">{labelCard.safety.boxed_warning}</p>
+              </div>
+            )}
+            {(labelCard.safety?.warnings?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-xs font-medium text-slate-500">警告与注意事项</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {labelCard.safety!.warnings.map((w, i) => (
+                    <li key={i} className="text-xs leading-relaxed text-slate-700">{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {labelCard.safety?.common_adverse_reactions && (
+              <p className="text-xs leading-relaxed text-slate-600">
+                <span className="font-medium text-slate-500">常见不良反应：</span>
+                {labelCard.safety.common_adverse_reactions}
+              </p>
+            )}
+          </div>
+        )}
+      </Chapter>
+
+      {/* 六、学术证据 */}
+      <Chapter title="六、学术证据（PubMed 2023-2026）">
         <PubMedEvidence entry={pubmedEntry} />
         {!pubmedEntry && (
           <p className="mt-2 text-xs text-slate-400">口径提示：PubMed 证据当前仅覆盖引入期成分。</p>
         )}
       </Chapter>
 
-      {/* 六、关联实体 */}
-      <Chapter title="六、关联实体">
+      {/* 七、关联实体 */}
+      <Chapter title="七、关联实体">
         {(!links || (!links.diseases?.length && !links.companies?.length && !links.trials?.length)) ? (
           <p className="text-sm text-slate-400">暂无关联实体数据。</p>
         ) : (

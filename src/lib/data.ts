@@ -1225,3 +1225,83 @@ export function loadDiseasePubMed(): Promise<DiseasePubMed> {
   }
   return diseasePubMedPromise
 }
+
+// ---------- 成分级说明书要点摘要 ----------
+
+export interface LabelEfficacySummary {
+  key_results: string[]
+  source_section: string
+}
+
+export interface LabelSafetySummary {
+  boxed_warning: string | null
+  warnings: string[]
+  common_adverse_reactions: string | null
+}
+
+export interface LabelSummaryEntry {
+  application_number: string
+  drug_name: string
+  efficacy?: LabelEfficacySummary
+  safety?: LabelSafetySummary
+}
+
+export interface LabelSummary {
+  generated_at: string
+  scope: string
+  ingredients: Record<string, LabelSummaryEntry>
+}
+
+let labelSummaryPromise: Promise<LabelSummary> | null = null
+
+export function loadLabelSummary(): Promise<LabelSummary> {
+  if (!labelSummaryPromise) {
+    labelSummaryPromise = fetch(`${import.meta.env.BASE_URL}data/label_summary.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`label_summary.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<LabelSummary>
+      })
+  }
+  return labelSummaryPromise
+}
+
+// ---------- 报告衍生指标层 ----------
+
+export interface DiseaseMetrics {
+  ingredients_total: number
+  crowded_pct: number
+  crowded_bucket: '前25%' | '中位' | '后25%'
+  hhi: number
+  hhi_pct: number
+  hhi_bucket: '分散' | '中等' | '集中'
+  top_company: string | null
+  top_company_share: number | null
+  pubmed_covered: boolean
+}
+
+export interface IngredientMetrics {
+  erosion?: { stage: string; first_anda: string | null; n_anda_companies: number }
+  exclusivity_pct?: number | null
+  evidence?: { clinical_count: number; years_on_market: number; per_year: number; bucket: '高' | '中' | '低' }
+  global_score?: number
+}
+
+export interface ReportMetrics {
+  generated_at: string
+  notes: string
+  diseases: Record<string, DiseaseMetrics>
+  ingredients: Record<string, IngredientMetrics>
+}
+
+let reportMetricsPromise: Promise<ReportMetrics> | null = null
+
+export function loadReportMetrics(): Promise<ReportMetrics> {
+  if (!reportMetricsPromise) {
+    reportMetricsPromise = fetch(`${import.meta.env.BASE_URL}data/report_metrics.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`report_metrics.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<ReportMetrics>
+      })
+  }
+  return reportMetricsPromise
+}
