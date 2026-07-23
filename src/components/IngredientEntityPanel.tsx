@@ -6,8 +6,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import {
-  loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadSponsorMap, loadGlobalAccess, resolveCompanySlug,
-  type LifecycleRecord, type EntityMap, type IngredientPubMedIndex, type APIProduct, type GlobalAccessRecord,
+  loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadSponsorMap, loadGlobalAccess, loadCtIngredient, resolveCompanySlug,
+  type LifecycleRecord, type EntityMap, type IngredientPubMedIndex, type APIProduct, type GlobalAccessRecord, type CtDiseaseEntry,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -97,6 +97,7 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
   const [pubmed, setPubmed] = useState<IngredientPubMedIndex | null>(null)
   const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
   const [globalRec, setGlobalRec] = useState<GlobalAccessRecord | null>(null)
+  const [ct, setCt] = useState<CtDiseaseEntry | null>(null)
 
   useEffect(() => {
     loadLifecycleIndex()
@@ -111,6 +112,9 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
     loadGlobalAccess()
       .then((d) => setGlobalRec(d.records[apiName.toUpperCase()] ?? null))
       .catch(() => setGlobalRec(null))
+    loadCtIngredient()
+      .then((d) => setCt(d.ingredients[apiName.toUpperCase()] ?? null))
+      .catch(() => setCt(null))
   }, [apiName])
 
   const links = entityMap?.ingredients[apiName.toUpperCase()]
@@ -333,12 +337,17 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
                 </div>
               </div>
             )}
-            {(links?.trials?.length ?? 0) > 0 && (
+            {ct && !ct.error && (ct.total ?? 0) > 0 ? (
+              <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                <FlaskConical className="h-3.5 w-3.5" />
+                关联临床试验 {ct.total!.toLocaleString()} 项（ClinicalTrials.gov API v2 干预名匹配，含对照组提及）
+              </p>
+            ) : (links?.trials?.length ?? 0) > 0 ? (
               <p className="flex items-center gap-1.5 text-xs text-slate-500">
                 <FlaskConical className="h-3.5 w-3.5" />
                 关联临床试验 {links!.trials!.length} 项（ClinicalTrials.gov，按启动日期倒序取前 20）
               </p>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 

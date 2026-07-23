@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Loader2, Printer, ExternalLink } from 'lucide-react'
 import {
   loadLifecycleIndex, loadEntityMap, loadGlobalAccess, loadDiseasePubMed,
-  loadLabelSummary, loadReportMetrics,
+  loadLabelSummary, loadReportMetrics, loadCtDisease,
   type LifecycleRecord, type EntityMap, type GlobalAccess, type DiseasePubMedEntry,
-  type DiseaseIndexEntry, type LabelSummary, type ReportMetrics,
+  type DiseaseIndexEntry, type LabelSummary, type ReportMetrics, type CtDiseaseEntry,
 } from '@/lib/data'
 import { diseaseInsights } from '@/lib/insights'
+import { CtPhaseBar, CtStatusLine, CtTrialList } from '@/components/CtTrials'
 import { cn } from '@/lib/utils'
 
 
@@ -60,6 +61,8 @@ export default function DiseaseReport({ entry, onBack }: {
   const [generatedAt, setGeneratedAt] = useState('')
   const [labelSummary, setLabelSummary] = useState<LabelSummary | null>(null)
   const [metrics, setMetrics] = useState<ReportMetrics | null>(null)
+  const [ct, setCt] = useState<CtDiseaseEntry | null>(null)
+  const [ctFailed, setCtFailed] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -72,6 +75,9 @@ export default function DiseaseReport({ entry, onBack }: {
         .catch(() => setPubmed(null)),
       loadLabelSummary().then(setLabelSummary).catch(() => setLabelSummary(null)),
       loadReportMetrics().then(setMetrics).catch(() => setMetrics(null)),
+      loadCtDisease()
+        .then((d) => { setCt(d.diseases[entry.slug] ?? null); setCtFailed(false) })
+        .catch(() => { setCt(null); setCtFailed(true) }),
     ]).finally(() => setLoading(false))
   }, [entry.slug])
 
@@ -82,8 +88,6 @@ export default function DiseaseReport({ entry, onBack }: {
     [diseaseLinks],
   )
   const ingredientsTotal = diseaseLinks?.ingredients_total ?? ingredients.length
-  const trialCount = diseaseLinks?.trial_count ?? 0
-  const trialsCoverage = diseaseLinks?.trials_coverage
 
   // 有生命周期档案的成分
   const withRec = useMemo(
@@ -353,18 +357,35 @@ export default function DiseaseReport({ entry, onBack }: {
       </Chapter>
 
       {/* 六、在研管线 */}
-      <Chapter title="六、在研管线">
-        {trialsCoverage === 'not_covered' ? (
-          <Muted>该疾病暂未接入临床试验索引（试验数据未覆盖，不代表无在研试验）。</Muted>
-        ) : trialCount > 0 ? (
-          <p className="text-sm text-slate-700">
-            关联临床试验 <b>{trialCount}</b> 项（ClinicalTrials.gov 索引）。
-          </p>
+      <Chapter title="六、在研管线（ClinicalTrials.gov）">
+        {ctFailed || (ct && ct.error) ? (
+          <Muted>临床试验查询失败或未覆盖该疾病（查询失败 ≠ 0 项）。</Muted>
+        ) : !ct ? (
+          <Muted>临床试验数据未加载。</Muted>
+        ) : (ct.total ?? 0) === 0 ? (
+          <p className="text-sm text-slate-700">ClinicalTrials.gov 中该疾病相关研究确为 <b>0</b> 项（查询已成功返回）。</p>
         ) : (
-          <p className="text-sm text-slate-700">临床试验索引中该疾病确为 <b>0</b> 项（索引已覆盖该疾病）。</p>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">
+              相关研究共 <b>{ct.total!.toLocaleString()}</b> 项（按最近更新排序取前列研究见下）
+            </p>
+            {ct.by_status && <CtStatusLine byStatus={ct.by_status} />}
+            {ct.by_phase && (
+              <div>
+                <p className="mb-1 text-xs font-medium text-slate-500">阶段分布</p>
+                <CtPhaseBar byPhase={ct.by_phase} />
+              </div>
+            )}
+            {(ct.top?.length ?? 0) > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-medium text-slate-500">最近更新研究（前 5）</p>
+                <CtTrialList trials={ct.top!} max={5} />
+              </div>
+            )}
+          </div>
         )}
-        <p className="mt-1 text-xs text-slate-400">
-          注：当前仅提供试验计数；逐试验明细（阶段/申办方/终点）将在后续版本接入。
+        <p className="mt-2 text-xs text-slate-400">
+          口径：ClinicalTrials.gov API v2 全库计量（ConditionSearch 含同义词扩展，计数偏宽）；阶段/状态为分项计数，合计可能小于总数。
         </p>
       </Chapter>
 

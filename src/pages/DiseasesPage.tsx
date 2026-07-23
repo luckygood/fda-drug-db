@@ -22,7 +22,9 @@ import {
   loadDiseaseIndex,
   loadSponsorMap,
   loadEntityMap,
+  loadCtDisease,
   resolveCompanySlug,
+  type CtDiseaseEntry,
   type DiseaseDetail,
   type DiseaseIndexEntry,
   type EntityMap,
@@ -52,6 +54,7 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
   const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
+  const [ctDiseases, setCtDiseases] = useState<Record<string, CtDiseaseEntry> | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -61,6 +64,9 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
     loadEntityMap()
       .then(setEntityMap)
       .catch(() => setEntityMap(null))
+    loadCtDisease()
+      .then((d) => setCtDiseases(d.diseases))
+      .catch(() => setCtDiseases(null))
   }, [])
 
   useEffect(() => {
@@ -328,13 +334,37 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">相关成分 / 在研管线</CardTitle>
-                  {links.trials_coverage === 'not_covered' ? (
-                    <p className="text-xs text-slate-400">该疾病暂未接入临床试验索引（试验数据未覆盖，不代表无在研试验）</p>
-                  ) : links.trial_count > 0 ? (
-                    <p className="text-xs text-slate-400">关联临床试验 {links.trial_count} 项（ClinicalTrials.gov）</p>
-                  ) : (
-                    <p className="text-xs text-slate-400">临床试验索引中该疾病确为 0 项（ClinicalTrials.gov 已覆盖）</p>
-                  )}
+                  {(() => {
+                    const ct = ctDiseases?.[selected.slug]
+                    if (!ct || ct.error) {
+                      return <p className="text-xs text-slate-400">临床试验查询失败或未覆盖该疾病（查询失败 ≠ 0 项）</p>
+                    }
+                    if ((ct.total ?? 0) === 0) {
+                      return <p className="text-xs text-slate-400">ClinicalTrials.gov 中该疾病相关研究确为 0 项（查询已返回）</p>
+                    }
+                    const p3 = ct.by_phase?.PHASE3 ?? 0
+                    const p2 = ct.by_phase?.PHASE2 ?? 0
+                    const recruiting = ct.by_status?.RECRUITING ?? 0
+                    return (
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500">
+                          在研管线：相关研究 <b className="text-slate-700">{ct.total!.toLocaleString()}</b> 项
+                          （ClinicalTrials.gov）
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">III期 {p3}</span>
+                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">II期 {p2}</span>
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">招募中 {recruiting}</span>
+                          <button
+                            onClick={() => setReportMode(true)}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            在报告中查看 →
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-1.5">

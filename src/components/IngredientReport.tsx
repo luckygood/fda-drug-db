@@ -3,12 +3,13 @@ import { ChevronLeft, Loader2, Printer } from 'lucide-react'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import {
   loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadGlobalAccess,
-  loadLabelSummary, loadReportMetrics,
+  loadLabelSummary, loadReportMetrics, loadCtIngredient,
   type LifecycleRecord, type EntityMap, type IngredientPubMedIndex,
   type GlobalAccessRecord, type APIProduct,
-  type LabelSummaryEntry, type IngredientMetrics,
+  type LabelSummaryEntry, type IngredientMetrics, type CtDiseaseEntry,
 } from '@/lib/data'
 import { ingredientInsights } from '@/lib/insights'
+import { CtTrialList } from '@/components/CtTrials'
 import { cn } from '@/lib/utils'
 
 
@@ -97,6 +98,7 @@ export default function IngredientReport({ apiName, products, onBack }: {
   const [globalRec, setGlobalRec] = useState<GlobalAccessRecord | null>(null)
   const [labelCard, setLabelCard] = useState<LabelSummaryEntry | null>(null)
   const [ingMetrics, setIngMetrics] = useState<IngredientMetrics | null>(null)
+  const [ct, setCt] = useState<CtDiseaseEntry | null>(null)
   const [generatedAt, setGeneratedAt] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -120,6 +122,9 @@ export default function IngredientReport({ apiName, products, onBack }: {
       loadReportMetrics()
         .then((d) => setIngMetrics(d.ingredients[apiName.toUpperCase()] ?? null))
         .catch(() => setIngMetrics(null)),
+      loadCtIngredient()
+        .then((d) => setCt(d.ingredients[apiName.toUpperCase()] ?? null))
+        .catch(() => setCt(null)),
     ]).finally(() => setLoading(false))
   }, [apiName])
 
@@ -382,7 +387,7 @@ export default function IngredientReport({ apiName, products, onBack }: {
 
       {/* 七、关联实体 */}
       <Chapter title="七、关联实体">
-        {(!links || (!links.diseases?.length && !links.companies?.length && !links.trials?.length)) ? (
+        {(!links || (!links.diseases?.length && !links.companies?.length && !links.trials?.length)) && (!ct || ct.error || (ct.total ?? 0) === 0) ? (
           <p className="text-sm text-slate-400">暂无关联实体数据。</p>
         ) : (
           <div className="space-y-3 text-sm text-slate-700">
@@ -396,9 +401,22 @@ export default function IngredientReport({ apiName, products, onBack }: {
                 （{links!.companies!.length} 家）
               </p>
             )}
-            {(links?.trials?.length ?? 0) > 0 && (
+            {ct && !ct.error && (ct.total ?? 0) > 0 ? (
+              <div>
+                <p>
+                  <span className="mr-2 text-xs text-slate-400">临床试验</span>
+                  相关研究 <b>{ct.total!.toLocaleString()}</b> 项（ClinicalTrials.gov API v2 干预名匹配，含对照组提及）
+                </p>
+                {(ct.top?.length ?? 0) > 0 && (
+                  <div className="mt-2">
+                    <p className="mb-1 text-xs text-slate-400">最近更新研究（前 3）</p>
+                    <CtTrialList trials={ct.top!} max={3} />
+                  </div>
+                )}
+              </div>
+            ) : (links?.trials?.length ?? 0) > 0 ? (
               <p><span className="mr-2 text-xs text-slate-400">临床试验</span>关联 {links!.trials!.length} 项（ClinicalTrials.gov，前 20 项）</p>
-            )}
+            ) : null}
           </div>
         )}
       </Chapter>

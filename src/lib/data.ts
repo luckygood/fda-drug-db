@@ -1305,3 +1305,62 @@ export function loadReportMetrics(): Promise<ReportMetrics> {
   }
   return reportMetricsPromise
 }
+
+// ---------- ClinicalTrials.gov 在研管线计量 ----------
+
+export interface CtTrial {
+  nctId: string
+  title: string
+  phase: string | null
+  status: string | null
+  sponsor: string | null
+  startDate: string | null
+  completionDate: string | null
+  enrollment: number | null
+}
+
+export interface CtDiseaseEntry {
+  total?: number
+  by_phase?: Record<string, number>
+  by_status?: Record<string, number>
+  top?: CtTrial[]
+  error?: boolean
+}
+
+export interface CtDiseaseIndex {
+  generated_at: string
+  window_note: string
+  diseases: Record<string, CtDiseaseEntry>
+}
+
+export interface CtIngredientIndex {
+  generated_at: string
+  window_note: string
+  ingredients: Record<string, CtDiseaseEntry>
+}
+
+let ctDiseasePromise: Promise<CtDiseaseIndex> | null = null
+
+export function loadCtDisease(): Promise<CtDiseaseIndex> {
+  if (!ctDiseasePromise) {
+    ctDiseasePromise = fetch(`${import.meta.env.BASE_URL}data/ct_disease.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`ct_disease.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<CtDiseaseIndex>
+      })
+  }
+  return ctDiseasePromise
+}
+
+let ctIngredientPromise: Promise<CtIngredientIndex> | null = null
+
+export function loadCtIngredient(): Promise<CtIngredientIndex> {
+  if (!ctIngredientPromise) {
+    ctIngredientPromise = fetch(`${import.meta.env.BASE_URL}data/ct_ingredient.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`ct_ingredient.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<CtIngredientIndex>
+      })
+  }
+  return ctIngredientPromise
+}
