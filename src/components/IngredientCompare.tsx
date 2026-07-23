@@ -7,7 +7,7 @@ import {
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
-const TODAY = new Date('2026-07-22T00:00:00')
+const TODAY = new Date() // 运行时当前日期（Fix 4：不再硬编码）
 
 const STAGE_STYLE: Record<string, string> = {
   引入期: 'bg-blue-100 text-blue-700',

@@ -18,13 +18,14 @@ function pubtypeBadgeCls(t: string): string {
  */
 export default function DiseasePubMedPanel({ slug }: { slug: string }) {
   const [entry, setEntry] = useState<DiseasePubMedEntry | null | undefined>(undefined)
+  const [window_, setWindow_] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     loadDiseasePubMed()
       .then((d) => {
-        if (!cancelled) setEntry(d.diseases[slug] ?? null)
+        if (!cancelled) { setEntry(d.diseases[slug] ?? null); setWindow_(d.window?.replace(':', '–') ?? null) }
       })
       .catch((e: Error) => {
         if (!cancelled) setError(e.message)
@@ -67,7 +68,7 @@ export default function DiseasePubMedPanel({ slug }: { slug: string }) {
           PubMed 研究洞察
         </CardTitle>
         <p className="text-xs text-slate-400">
-          数据来源：PubMed（NCBI）· 按疾病主题词检索 · 2023–2026 年文献 · 聚焦临床研究与综述证据
+          数据来源：PubMed（NCBI）· 按疾病主题词检索 · {window_ ? `${window_} 年文献` : '近三年文献'} · 聚焦临床研究与综述证据
         </p>
       </CardHeader>
       <CardContent className="space-y-5">

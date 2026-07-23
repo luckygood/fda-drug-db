@@ -4,7 +4,6 @@ import EChart from '@/components/EChart'
 import { loadNmeAnnual, type NmeAnnual, type NmeIngredient } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
-const TODAY = new Date('2026-07-22T00:00:00')
 
 const TYPE_COLORS: Record<string, string> = {
   小分子: '#3b82f6',
@@ -37,7 +36,7 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
 }) {
   const [data, setData] = useState<NmeAnnual | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [year, setYear] = useState('2025')
+  const [pickedYear, setPickedYear] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortAsc, setSortAsc] = useState(true)
 
@@ -46,6 +45,13 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
   }, [])
 
   const years = useMemo(() => (data ? Object.keys(data.years).sort() : []), [data])
+  // 默认年度：最新有官方计数的年份；用户点选后以其为准
+  const defaultYear = useMemo(() => {
+    if (!data) return null
+    const officialYears = Object.keys(data.years).filter((y) => data.years[y].official_count != null).sort()
+    return officialYears.length > 0 ? officialYears[officialYears.length - 1] : years[years.length - 1] ?? null
+  }, [data, years])
+  const year = pickedYear ?? defaultYear ?? '2025'
   const yd = data?.years[year] ?? null
 
   const sortedIngredients = useMemo(() => {
@@ -71,7 +77,7 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
     )
   }
 
-  const todayStr = TODAY.toISOString().slice(0, 10)
+  const todayStr = data.generated_at || new Date().toISOString().slice(0, 10)
   const smallPct = yd.total ? Math.round(((yd.type_dist['小分子'] ?? 0) / yd.total) * 100) : 0
   const g = yd.global
 
@@ -154,7 +160,7 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
           {years.map((y) => (
             <button
               key={y}
-              onClick={() => setYear(y)}
+              onClick={() => setPickedYear(y)}
               className={cn(
                 'rounded-full border px-3 py-1 text-xs font-medium',
                 y === year
@@ -170,12 +176,27 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
           <span>生成日期：{todayStr}</span>
           <span>口径：{data.scope}</span>
         </div>
+        <p className="mt-2 text-xs leading-relaxed text-slate-400">
+          方法论：标题数字采用 FDA CDER 官方年度名单（Novel Drug Approvals，CDER 口径不含 CBER），
+          名单检索于 {data.official_retrieved_at}；
+          平台另按「首次 NDA/BLA ≥ 2020」推导补充成分（清单中标注「补充推断」）。
+          官方汇编页：
+          <a href={data.official_source_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">
+            Compilation of CDER NME and New Biologic Approvals
+          </a>
+        </p>
       </section>
 
       {/* 概要磁贴 */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: '年度 NME 总数', value: `${yd.total} 个`, note: year === '2026' ? '年初至今' : '全年' },
+          {
+            label: '年度 NME 总数',
+            value: `${yd.official_count ?? yd.total} 个`,
+            note: yd.official_count != null
+              ? `FDA 官方口径${yd.derived_extra > 0 ? ` · 平台补充推断 +${yd.derived_extra}` : ''}`
+              : `平台推导 ${yd.total} 个（FDA 官方名单未发布）`,
+          },
           { label: '小分子占比', value: `${smallPct}%`, note: `${yd.type_dist['小分子'] ?? 0} / ${yd.total} 个` },
           {
             label: '全球可及（EMA / PMDA）',
@@ -272,7 +293,7 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
       </Chapter>
 
       {/* 六、完整清单 */}
-      <Chapter title={`六、完整清单（${yd.total} 个，点击成分查看生命周期档案）`}>
+      <Chapter title={`六、完整清单（官方 ${yd.official_count ?? '—'} 个 + 补充推断 ${yd.derived_extra} 个，点击成分查看生命周期档案）`}>
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-slate-200">
@@ -285,16 +306,26 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
           </thead>
           <tbody>
             {sortedIngredients.map((it: NmeIngredient) => (
-              <tr key={it.ing} className="border-b border-slate-100">
+              <tr key={`${it.ing}-${it.date}`} className={cn('border-b border-slate-100', it.stub && 'opacity-60')}>
                 <td className="px-2 py-1.5 text-sm">
-                  <button
-                    onClick={() => onSelectIngredient(it.ing)}
-                    className="text-left font-medium text-blue-600 hover:underline"
-                  >
-                    {it.ing}
-                  </button>
+                  {it.stub ? (
+                    <span className="font-medium text-slate-700">
+                      {it.official_name ?? it.ing}
+                      <span className="ml-1.5 rounded bg-slate-100 px-1 py-0.5 text-[10px] text-slate-500">仅官方名单</span>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => onSelectIngredient(it.ing)}
+                      className="text-left font-medium text-blue-600 hover:underline"
+                    >
+                      {it.ing}
+                    </button>
+                  )}
+                  {it.source === 'derived' && (
+                    <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-[10px] text-amber-600">补充推断</span>
+                  )}
                 </td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-sm text-slate-700">{it.date}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-sm text-slate-700">{it.date || '—'}</td>
                 <td className="max-w-40 truncate px-2 py-1.5 text-sm text-slate-600">{it.company}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-sm text-slate-600">{it.type}</td>
                 <td className="max-w-48 truncate px-2 py-1.5 text-xs text-slate-500">
@@ -304,6 +335,10 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
             ))}
           </tbody>
         </table>
+        <p className="mt-2 text-xs text-slate-400">
+          「补充推断」为平台按首次 NDA/BLA 推导、但未列入 FDA CDER 官方年度名单的成分（可能为复方新组合、
+          盐型差异或 CDER/CBER 口径差异）；「仅官方名单」为官方名单中本地暂无结构化推导记录的条目。
+        </p>
       </Chapter>
 
       {/* 页脚 */}
@@ -311,8 +346,9 @@ export default function NmeAnnualReport({ onBack, onSelectIngredient }: {
         <p>
           数据口径与免责声明：本报告基于公开监管数据自动生成（Drugs@FDA 产品及申请数据、EMA 集中审批药品清单、
           PMDA《List of Approved Drugs》2004-2026、内部疾病/企业实体映射），各数据集生成日期见各源文件。
-          NME 定义为首次 FDA 原始 NDA/BLA 获批落在 2020-01-01 之后的活性成分（不同盐型/水合物归并为同一实体，
-          生物制品四字母后缀名归一至主名，不含 ANDA）；分子类型为规则法自动分类（按 INN 词干与申请类型），可能存在少量误判；
+          NME 标题数字采用 FDA CDER 官方年度名单（Novel Drug Approvals，CDER 口径不含 CBER 审批的疫苗/血液/细胞基因疗法），
+          检索于 {data.official_retrieved_at}；清单中「补充推断」为平台按首次 FDA 原始 NDA/BLA ≥ 2020-01-01 推导的补充成分
+          （不同盐型/水合物归并为同一实体，生物制品四字母后缀名归一至主名，不含 ANDA）；分子类型为规则法自动分类（按 INN 词干与申请类型），可能存在少量误判；
           企业归属取首次获批申请的持证方，可能与最终商业化主体不同。本报告仅供研究参考，不构成医疗建议或投资建议。
         </p>
         <p className="mt-2">由 fda-drug-db 永久免费数据分析平台生成 · 报告生成日期 {todayStr}</p>

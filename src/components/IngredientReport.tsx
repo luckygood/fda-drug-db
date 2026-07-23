@@ -8,7 +8,6 @@ import {
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
-const TODAY = new Date('2026-07-22T00:00:00')
 
 const STAGE_STYLE: Record<string, string> = {
   引入期: 'bg-blue-100 text-blue-700',
@@ -141,7 +140,7 @@ export default function IngredientReport({ apiName, products, onBack }: {
     )
   }
 
-  const todayStr = TODAY.toISOString().slice(0, 10)
+  const todayStr = generatedAt || new Date().toISOString().slice(0, 10)
   const emaLag = globalRec?.ema_first_date && rec.first_approval
     ? monthsBetween(rec.first_approval, globalRec.ema_first_date) : null
   const pmdaLag = globalRec?.pmda_first_date && rec.first_approval
@@ -162,8 +161,8 @@ export default function IngredientReport({ apiName, products, onBack }: {
     ['全球三地状态', [
       `FDA 已获批（${rec.first_approval?.slice(0, 4) ?? '—'}）`,
       globalRec?.ema_status === 'authorised' ? `EMA 已授权（${globalRec.ema_first_date?.slice(0, 4)}）`
-        : globalRec?.ema_status === 'withdrawn' ? 'EMA 已撤市' : 'EMA 未收录',
-      globalRec?.pmda_status === 'approved' ? `PMDA 已获批（${globalRec.pmda_first_date?.slice(0, 4)}）` : 'PMDA 未收录',
+        : globalRec?.ema_status === 'withdrawn' ? 'EMA 已撤市' : 'EMA 集中审批未检索到',
+      globalRec?.pmda_status === 'approved' ? `PMDA 已获批（${globalRec.pmda_first_date?.slice(0, 4)}）` : 'PMDA 新药清单未检索到',
     ].join(' · ')],
     ['短缺 / 撤市', [rec.withdrawn ? '已撤市' : null, rec.shortage_risk ? SHORTAGE_LABEL[rec.shortage_risk] : null].filter(Boolean).join('；') || '无'],
   ]
@@ -272,7 +271,7 @@ export default function IngredientReport({ apiName, products, onBack }: {
             <div className="flex flex-wrap gap-2">
               <RegionBadge flag="🇺🇸" name="FDA" tone="blue">{rec.first_approval ?? '已获批'}</RegionBadge>
               {globalRec.match_type === 'unmatched' || !globalRec.ema_status ? (
-                <RegionBadge flag="🇪🇺" name="EMA" tone="gray">未收录</RegionBadge>
+                <RegionBadge flag="🇪🇺" name="EMA" tone="gray">集中审批未检索到</RegionBadge>
               ) : globalRec.ema_status === 'authorised' ? (
                 <RegionBadge flag="🇪🇺" name="EMA" tone="green">
                   已授权 {globalRec.ema_first_date ?? ''}{globalRec.ema_product ? ` · ${globalRec.ema_product}` : ''}
@@ -285,7 +284,7 @@ export default function IngredientReport({ apiName, products, onBack }: {
               {globalRec.pmda_status === 'approved' ? (
                 <RegionBadge flag="🇯🇵" name="PMDA" tone="green">已获批 {globalRec.pmda_first_date ?? ''}</RegionBadge>
               ) : (
-                <RegionBadge flag="🇯🇵" name="PMDA" tone="gray">未收录</RegionBadge>
+                <RegionBadge flag="🇯🇵" name="PMDA" tone="gray">新药清单未检索到</RegionBadge>
               )}
             </div>
             <p className="text-sm text-slate-600">

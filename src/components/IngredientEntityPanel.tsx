@@ -203,7 +203,7 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
                 {globalRec.match_type === 'unmatched' || !globalRec.ema_status ? (
                   <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
                     🇪🇺 EMA
-                    <span className="font-normal">未收录</span>
+                    <span className="font-normal">集中审批未检索到</span>
                   </span>
                 ) : globalRec.ema_status === 'authorised' ? (
                   <span
@@ -238,7 +238,7 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
                     🇯🇵 PMDA
-                    <span className="font-normal">未收录</span>
+                    <span className="font-normal">新药清单未检索到</span>
                   </span>
                 )}
                 <span className="text-xs text-slate-400">范围：2020 年至今 FDA 获批 NDA/BLA · EMA 集中审批 · PMDA 新药（2004 年起）</span>

@@ -9,8 +9,11 @@ Inputs (all local):
   - /tmp/fda-ct/data/ct/*.json         gh-pages 临床试验数据（trial.api 匹配成分）
     （若目录不存在，先执行: git archive origin/gh-pages data/ct | tar -x -C /tmp/fda-ct）
 
-Caps: trials/ingredient ≤20（按启动日期倒序）、diseases/ingredient ≤20、
-companies/ingredient ≤30、ingredients/disease ≤50、ingredients/company ≤50。
+Caps（仅展示截断，统计用 *_total 全量字段）: trials/ingredient ≤20（按启动日期倒序）、
+diseases/ingredient ≤20、companies/ingredient ≤30、ingredients/disease ≤50、ingredients/company ≤50。
+
+三态说明（Fix 2）：diseases[slug].trials_coverage = "covered"（该疾病有试验索引文件，
+trial_count 可能确为 0）| "not_covered"（未接入试验数据，前端不得显示为 0）。
 """
 
 import json
@@ -18,6 +21,8 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+
+from build_common import write_dataset
 
 REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "public" / "data"
@@ -106,11 +111,15 @@ def main():
         print(f"!! 未找到 {CT_DIR}，trials 映射为空", file=sys.stderr)
 
     # 疾病 slug 与 ct 文件名的匹配（直接同名优先，其次下划线/连字符归一）
+    def ct_norm_slug(slug):
+        return slug if slug in ct_trial_count_by_slug else slug.replace("_", "-").lower()
+
     def ct_count_for_disease(slug):
-        if slug in ct_trial_count_by_slug:
-            return ct_trial_count_by_slug[slug]
-        norm = slug.replace("_", "-").lower()
-        return ct_trial_count_by_slug.get(norm, 0)
+        return ct_trial_count_by_slug.get(ct_norm_slug(slug), 0)
+
+    def ct_covered(slug):
+        """该疾病是否接入了试验索引（与 trial_count 是否为 0 无关）。"""
+        return ct_norm_slug(slug) in ct_trial_count_by_slug
 
     # ---------- 组装输出 ----------
     ingredients_out = {}
@@ -127,17 +136,23 @@ def main():
         entry = {}
         if ing_diseases.get(ing):
             entry["diseases"] = sorted(ing_diseases[ing])[:MAX_DISEASES]
+            entry["diseases_total"] = len(ing_diseases[ing])
         if ing_sponsors.get(ing):
             entry["companies"] = sorted(ing_sponsors[ing])[:MAX_COMPANIES]
+            entry["companies_total"] = len(ing_sponsors[ing])
         if ncts:
             entry["trials"] = ncts
+            entry["trials_total"] = len({n for _, n in trials})
         ingredients_out[ing] = entry
 
     diseases_out = {}
     for slug in sorted(disease_slugs):
+        full = disease_ings.get(slug, set())
         diseases_out[slug] = {
-            "ingredients": sorted(disease_ings.get(slug, set()))[:MAX_ING_PER_DISEASE],
+            "ingredients": sorted(full)[:MAX_ING_PER_DISEASE],
+            "ingredients_total": len(full),
             "trial_count": ct_count_for_disease(slug),
+            "trials_coverage": "covered" if ct_covered(slug) else "not_covered",
         }
 
     companies_out = {}
@@ -145,17 +160,15 @@ def main():
         companies_out[slug] = {
             "name": company_name.get(slug, slug),
             "ingredients": sorted(ings)[:MAX_ING_PER_COMPANY],
+            "ingredients_total": len(ings),
         }
 
     out = {
-        "generated_at": lifecycle["generated_at"],
         "ingredients": ingredients_out,
         "diseases": diseases_out,
         "companies": companies_out,
     }
-    out_path = DATA / "entity_map.json"
-    with open(out_path, "w") as fh:
-        json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))
+    out_path = write_dataset("entity_map", out)
 
     # ---------- 统计 ----------
     n_dis = sum(1 for e in ingredients_out.values() if e.get("diseases"))

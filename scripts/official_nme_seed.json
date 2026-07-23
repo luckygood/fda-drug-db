@@ -1,0 +1,1482 @@
+{
+ "retrieved_at": "2026-07-22",
+ "note": "FDA CDER 官方 Novel Drug Approvals 名单（NME + new therapeutic biologics，CDER 口径，不含 CBER）。fda.gov 直连被 Akamai 拦截（HTTP 404），经检索服务抓取官方页面与年度报告转录；2020 年页面表格为图片，仅有商品名（无成分名/日期，匹配走商品名）。",
+ "sources": {
+  "2020": "https://www.fda.gov/drugs/new-drugs-fda-cders-new-molecular-entities-and-new-therapeutic-biological-products/novel-drug-approvals-2020 （年度报告 Advancing Health Through Innovation: New Drug Therapy Approvals 2020）",
+  "2021": "https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2021",
+  "2022": "https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2022",
+  "2023": "https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2023",
+  "2024": "https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2024",
+  "2025": "https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2025",
+  "compilation": "https://www.fda.gov/drugs/drug-approvals-and-databases/compilation-cder-new-molecular-entity-nme-drug-and-new-biologic-approvals"
+ },
+ "years": {
+  "2025": [
+   {
+    "name": "Nereus",
+    "ing": "tradipitant",
+    "date": "2025-12-30"
+   },
+   {
+    "name": "Yartemlea",
+    "ing": "narsoplimab-wuug",
+    "date": "2025-12-23"
+   },
+   {
+    "name": "Myqorzo",
+    "ing": "aficamten",
+    "date": "2025-12-19"
+   },
+   {
+    "name": "Exdensur",
+    "ing": "depemokimab-ulaa",
+    "date": "2025-12-16"
+   },
+   {
+    "name": "Cardamyst",
+    "ing": "etripamil",
+    "date": "2025-12-12"
+   },
+   {
+    "name": "Nuzolvence",
+    "ing": "zoliflodacin",
+    "date": "2025-12-12"
+   },
+   {
+    "name": "Lerochol",
+    "ing": "lerodalcibep-liga",
+    "date": "2025-12-12"
+   },
+   {
+    "name": "Voyxact",
+    "ing": "sibeprenlimab-szsi",
+    "date": "2025-11-25"
+   },
+   {
+    "name": "Hyrnuo",
+    "ing": "sevabertinib",
+    "date": "2025-11-19"
+   },
+   {
+    "name": "Redemplo",
+    "ing": "plozasiran",
+    "date": "2025-11-18"
+   },
+   {
+    "name": "Komzifti",
+    "ing": "ziftomenib",
+    "date": "2025-11-13"
+   },
+   {
+    "name": "Kygevvi",
+    "ing": "doxecitine and doxribtimine",
+    "date": "2025-11-03"
+   },
+   {
+    "name": "Lynkuet",
+    "ing": "elinzanetant",
+    "date": "2025-10-24"
+   },
+   {
+    "name": "Jascayd",
+    "ing": "nerandomilast",
+    "date": "2025-10-07"
+   },
+   {
+    "name": "Rhapsido",
+    "ing": "remibrutinib",
+    "date": "2025-09-30"
+   },
+   {
+    "name": "Palsonify",
+    "ing": "paltusotine",
+    "date": "2025-09-25"
+   },
+   {
+    "name": "Inluriyo",
+    "ing": "imlunestrant",
+    "date": "2025-09-25"
+   },
+   {
+    "name": "Forzinity",
+    "ing": "elamipretide",
+    "date": "2025-09-19"
+   },
+   {
+    "name": "Keytruda Qlex",
+    "ing": "pembrolizumab and berahyaluronidase alfa-pmph",
+    "date": "2025-09-19"
+   },
+   {
+    "name": "Wayrilz",
+    "ing": "rilzabrutinib",
+    "date": "2025-08-29"
+   },
+   {
+    "name": "Dawnzera",
+    "ing": "donidalorsen",
+    "date": "2025-08-21"
+   },
+   {
+    "name": "Brinsupri",
+    "ing": "brensocatib",
+    "date": "2025-08-12"
+   },
+   {
+    "name": "Hernexeos",
+    "ing": "zongertinib",
+    "date": "2025-08-08"
+   },
+   {
+    "name": "Modeyso",
+    "ing": "dordaviprone",
+    "date": "2025-08-06"
+   },
+   {
+    "name": "Vizz",
+    "ing": "aceclidine",
+    "date": "2025-07-31"
+   },
+   {
+    "name": "Sephience",
+    "ing": "sepiapterin",
+    "date": "2025-07-28"
+   },
+   {
+    "name": "Anzupgo",
+    "ing": "delgocitinib",
+    "date": "2025-07-23"
+   },
+   {
+    "name": "Ekterly",
+    "ing": "sebetralstat",
+    "date": "2025-07-03"
+   },
+   {
+    "name": "Zegfrovy",
+    "ing": "sunvozertinib",
+    "date": "2025-07-02"
+   },
+   {
+    "name": "Lynozyfic",
+    "ing": "linvoseltamab-gcpt",
+    "date": "2025-07-02"
+   },
+   {
+    "name": "Andembry",
+    "ing": "garadacimab-gxii",
+    "date": "2025-06-16"
+   },
+   {
+    "name": "Ibtrozi",
+    "ing": "taletrectinib",
+    "date": "2025-06-11"
+   },
+   {
+    "name": "Enflonsia",
+    "ing": "clesrovimab-cfor",
+    "date": "2025-06-09"
+   },
+   {
+    "name": "Tryptyr",
+    "ing": "acoltremon",
+    "date": "2025-05-28"
+   },
+   {
+    "name": "Emrelis",
+    "ing": "telisotuzumab vedotin-tllv",
+    "date": "2025-05-14"
+   },
+   {
+    "name": "Avmapki Fakzynja Co-Pack",
+    "ing": "avutometinib and defactinib",
+    "date": "2025-05-08"
+   },
+   {
+    "name": "Imaavy",
+    "ing": "nipocalimab-aahu",
+    "date": "2025-04-29"
+   },
+   {
+    "name": "penpulimab-kcqx",
+    "ing": "penpulimab-kcqx",
+    "date": "2025-04-23"
+   },
+   {
+    "name": "Vanrafia",
+    "ing": "atrasentan",
+    "date": "2025-04-02"
+   },
+   {
+    "name": "Qfitlia",
+    "ing": "fitusiran",
+    "date": "2025-03-28"
+   },
+   {
+    "name": "Blujepa",
+    "ing": "gepotidacin",
+    "date": "2025-03-25"
+   },
+   {
+    "name": "Romvimza",
+    "ing": "vimseltinib",
+    "date": "2025-02-14"
+   },
+   {
+    "name": "Gomekli",
+    "ing": "mirdametinib",
+    "date": "2025-02-11"
+   },
+   {
+    "name": "Journavx",
+    "ing": "suzetrigine",
+    "date": "2025-01-30"
+   },
+   {
+    "name": "Grafapex",
+    "ing": "treosulfan",
+    "date": "2025-01-21"
+   },
+   {
+    "name": "Datroway",
+    "ing": "datopotamab deruxtecan-dlnk",
+    "date": "2025-01-17"
+   }
+  ],
+  "2024": [
+   {
+    "name": "Alhemo",
+    "ing": "concizumab-mtci",
+    "date": "2024-12-20"
+   },
+   {
+    "name": "Alyftrek",
+    "ing": "vanzacaftor, tezacaftor, and deutivacaftor",
+    "date": "2024-12-20"
+   },
+   {
+    "name": "Tryngolza",
+    "ing": "olezarsen",
+    "date": "2024-12-19"
+   },
+   {
+    "name": "Ensacove",
+    "ing": "ensartinib",
+    "date": "2024-12-18"
+   },
+   {
+    "name": "Crenessity",
+    "ing": "crinecerfont",
+    "date": "2024-12-13"
+   },
+   {
+    "name": "Unloxcyt",
+    "ing": "cosibelimab-ipdl",
+    "date": "2024-12-13"
+   },
+   {
+    "name": "Bizengri",
+    "ing": "zenocutuzumab-zbco",
+    "date": "2024-12-04"
+   },
+   {
+    "name": "Iomervu",
+    "ing": "iomeprol",
+    "date": "2024-11-27"
+   },
+   {
+    "name": "Rapiblyk",
+    "ing": "landiolol",
+    "date": "2024-11-22"
+   },
+   {
+    "name": "Attruby",
+    "ing": "acoramidis",
+    "date": "2024-11-22"
+   },
+   {
+    "name": "Ziihera",
+    "ing": "zanidatamab-hrii",
+    "date": "2024-11-20"
+   },
+   {
+    "name": "Revuforj",
+    "ing": "revumenib",
+    "date": "2024-11-15"
+   },
+   {
+    "name": "Orlynvah",
+    "ing": "sulopenem etzadroxil, probenecid",
+    "date": "2024-10-25"
+   },
+   {
+    "name": "Vyloy",
+    "ing": "zolbetuximab-clzb",
+    "date": "2024-10-18"
+   },
+   {
+    "name": "Hympavzi",
+    "ing": "marstacimab-hncq",
+    "date": "2024-10-11"
+   },
+   {
+    "name": "Itovebi",
+    "ing": "inavolisib",
+    "date": "2024-10-10"
+   },
+   {
+    "name": "Flyrcado",
+    "ing": "flurpiridaz F 18",
+    "date": "2024-09-27"
+   },
+   {
+    "name": "Cobenfy",
+    "ing": "xanomeline and trospium chloride",
+    "date": "2024-09-26"
+   },
+   {
+    "name": "Aqneursa",
+    "ing": "levacetylleucine",
+    "date": "2024-09-24"
+   },
+   {
+    "name": "Miplyffa",
+    "ing": "arimoclomol",
+    "date": "2024-09-20"
+   },
+   {
+    "name": "Ebglyss",
+    "ing": "lebrikizumab-lbkz",
+    "date": "2024-09-13"
+   },
+   {
+    "name": "Lazcluze",
+    "ing": "lazertinib",
+    "date": "2024-08-19"
+   },
+   {
+    "name": "Niktimvo",
+    "ing": "axatilimab-csfr",
+    "date": "2024-08-14"
+   },
+   {
+    "name": "Livdelzi",
+    "ing": "seladelpar",
+    "date": "2024-08-14"
+   },
+   {
+    "name": "Nemluvio",
+    "ing": "nemolizumab-ilto",
+    "date": "2024-08-12"
+   },
+   {
+    "name": "Yorvipath",
+    "ing": "palopegteriparatide",
+    "date": "2024-08-09"
+   },
+   {
+    "name": "Voranigo",
+    "ing": "vorasidenib",
+    "date": "2024-08-06"
+   },
+   {
+    "name": "Leqselvi",
+    "ing": "deuruxolitinib",
+    "date": "2024-07-25"
+   },
+   {
+    "name": "Kisunla",
+    "ing": "donanemab-azbt",
+    "date": "2024-07-02"
+   },
+   {
+    "name": "Ohtuvayre",
+    "ing": "ensifentrine",
+    "date": "2024-06-26"
+   },
+   {
+    "name": "Piasky",
+    "ing": "crovalimab-akkz",
+    "date": "2024-06-20"
+   },
+   {
+    "name": "Sofdra",
+    "ing": "sofpironium",
+    "date": "2024-06-18"
+   },
+   {
+    "name": "Iqirvo",
+    "ing": "elafibranor",
+    "date": "2024-06-10"
+   },
+   {
+    "name": "Rytelo",
+    "ing": "imetelstat",
+    "date": "2024-06-06"
+   },
+   {
+    "name": "Imdelltra",
+    "ing": "tarlatamab-dlle",
+    "date": "2024-05-16"
+   },
+   {
+    "name": "Xolremdi",
+    "ing": "mavorixafor",
+    "date": "2024-04-26"
+   },
+   {
+    "name": "Ojemda",
+    "ing": "tovorafenib",
+    "date": "2024-04-23"
+   },
+   {
+    "name": "Anktiva",
+    "ing": "nogapendekin alfa inbakicept-pmln",
+    "date": "2024-04-22"
+   },
+   {
+    "name": "Lumisight",
+    "ing": "pegulicianine",
+    "date": "2024-04-17"
+   },
+   {
+    "name": "Zevtera",
+    "ing": "ceftobiprole medocaril sodium",
+    "date": "2024-04-03"
+   },
+   {
+    "name": "Voydeya",
+    "ing": "danicopan",
+    "date": "2024-03-29"
+   },
+   {
+    "name": "Vafseo",
+    "ing": "vadadustat",
+    "date": "2024-03-27"
+   },
+   {
+    "name": "Winrevair",
+    "ing": "sotatercept-csrk",
+    "date": "2024-03-26"
+   },
+   {
+    "name": "Duvyzat",
+    "ing": "givinostat",
+    "date": "2024-03-21"
+   },
+   {
+    "name": "Tryvio",
+    "ing": "aprocitentan",
+    "date": "2024-03-19"
+   },
+   {
+    "name": "Rezdiffra",
+    "ing": "resmetirom",
+    "date": "2024-03-14"
+   },
+   {
+    "name": "Tevimbra",
+    "ing": "tislelizumab-jsgr",
+    "date": "2024-03-13"
+   },
+   {
+    "name": "Letybo",
+    "ing": "letibotulinumtoxinA-wlbg",
+    "date": "2024-02-29"
+   },
+   {
+    "name": "Exblifep",
+    "ing": "cefepime, enmetazobactam",
+    "date": "2024-02-22"
+   },
+   {
+    "name": "Zelsuvmi",
+    "ing": "berdazimer",
+    "date": "2024-01-05"
+   }
+  ],
+  "2023": [
+   {
+    "name": "Leqembi",
+    "ing": "lecanemab-irmb",
+    "date": "2023-01-06"
+   },
+   {
+    "name": "Brenzavvy",
+    "ing": "bexagliflozin",
+    "date": "2023-01-20"
+   },
+   {
+    "name": "Jaypirca",
+    "ing": "pirtobrutinib",
+    "date": "2023-01-27"
+   },
+   {
+    "name": "Orserdu",
+    "ing": "elacestrant",
+    "date": "2023-01-27"
+   },
+   {
+    "name": "Jesduvroq",
+    "ing": "daprodustat",
+    "date": "2023-02-01"
+   },
+   {
+    "name": "Lamzede",
+    "ing": "velmanase alfa-tycv",
+    "date": "2023-02-16"
+   },
+   {
+    "name": "Filspari",
+    "ing": "sparsentan",
+    "date": "2023-02-17"
+   },
+   {
+    "name": "Skyclarys",
+    "ing": "omaveloxolone",
+    "date": "2023-02-28"
+   },
+   {
+    "name": "Zavzpret",
+    "ing": "zavegepant",
+    "date": "2023-03-09"
+   },
+   {
+    "name": "Daybue",
+    "ing": "trofinetide",
+    "date": "2023-03-10"
+   },
+   {
+    "name": "Zynyz",
+    "ing": "retifanlimab-dlwr",
+    "date": "2023-03-22"
+   },
+   {
+    "name": "Rezzayo",
+    "ing": "rezafungin",
+    "date": "2023-03-22"
+   },
+   {
+    "name": "Joenja",
+    "ing": "leniolisib",
+    "date": "2023-03-24"
+   },
+   {
+    "name": "Qalsody",
+    "ing": "tofersen",
+    "date": "2023-04-25"
+   },
+   {
+    "name": "Elfabrio",
+    "ing": "pegunigalsidase alfa-iwxj",
+    "date": "2023-05-09"
+   },
+   {
+    "name": "Veozah",
+    "ing": "fezolinetant",
+    "date": "2023-05-12"
+   },
+   {
+    "name": "Miebo",
+    "ing": "perfluorhexyloctane",
+    "date": "2023-05-18"
+   },
+   {
+    "name": "Epkinly",
+    "ing": "epcoritamab-bysp",
+    "date": "2023-05-19"
+   },
+   {
+    "name": "Xacduro",
+    "ing": "sulbactam, durlobactam",
+    "date": "2023-05-23"
+   },
+   {
+    "name": "Paxlovid",
+    "ing": "nirmatrelvir, ritonavir",
+    "date": "2023-05-25"
+   },
+   {
+    "name": "Posluma",
+    "ing": "flotufolastat F 18",
+    "date": "2023-05-25"
+   },
+   {
+    "name": "Inpefa",
+    "ing": "sotagliflozin",
+    "date": "2023-05-26"
+   },
+   {
+    "name": "Columvi",
+    "ing": "glofitamab-gxbm",
+    "date": "2023-06-15"
+   },
+   {
+    "name": "Litfulo",
+    "ing": "ritlecitinib",
+    "date": "2023-06-23"
+   },
+   {
+    "name": "Rystiggo",
+    "ing": "rozanolixizumab-noli",
+    "date": "2023-06-26"
+   },
+   {
+    "name": "Ngenla",
+    "ing": "somatrogon-ghla",
+    "date": "2023-06-27"
+   },
+   {
+    "name": "Beyfortus",
+    "ing": "nirsevimab-alip",
+    "date": "2023-07-17"
+   },
+   {
+    "name": "Vanflyta",
+    "ing": "quizartinib",
+    "date": "2023-07-20"
+   },
+   {
+    "name": "Xdemvy",
+    "ing": "lotilaner",
+    "date": "2023-07-25"
+   },
+   {
+    "name": "Zurzuvae",
+    "ing": "zuranolone",
+    "date": "2023-08-04"
+   },
+   {
+    "name": "Izervay",
+    "ing": "avacincaptad pegol",
+    "date": "2023-08-04"
+   },
+   {
+    "name": "Talvey",
+    "ing": "talquetamab-tgvs",
+    "date": "2023-08-09"
+   },
+   {
+    "name": "Elrexfio",
+    "ing": "elranatamab-bcmm",
+    "date": "2023-08-14"
+   },
+   {
+    "name": "Sohonos",
+    "ing": "palovarotene",
+    "date": "2023-08-16"
+   },
+   {
+    "name": "Veopoz",
+    "ing": "pozelimab-bbfg",
+    "date": "2023-08-18"
+   },
+   {
+    "name": "Aphexda",
+    "ing": "motixafortide",
+    "date": "2023-09-08"
+   },
+   {
+    "name": "Ojjaara",
+    "ing": "momelotinib",
+    "date": "2023-09-15"
+   },
+   {
+    "name": "Exxua",
+    "ing": "gepirone",
+    "date": "2023-09-22"
+   },
+   {
+    "name": "Pombiliti",
+    "ing": "cipaglucosidase alfa-atga",
+    "date": "2023-09-28"
+   },
+   {
+    "name": "Rivfloza",
+    "ing": "nedosiran",
+    "date": "2023-09-29"
+   },
+   {
+    "name": "Velsipity",
+    "ing": "etrasimod",
+    "date": "2023-10-12"
+   },
+   {
+    "name": "Zilbrysq",
+    "ing": "zilucoplan",
+    "date": "2023-10-17"
+   },
+   {
+    "name": "Bimzelx",
+    "ing": "bimekizumab",
+    "date": "2023-10-17"
+   },
+   {
+    "name": "Agamree",
+    "ing": "vamorolone",
+    "date": "2023-10-26"
+   },
+   {
+    "name": "Omvoh",
+    "ing": "mirikizumab-mrkz",
+    "date": "2023-10-26"
+   },
+   {
+    "name": "Loqtorzi",
+    "ing": "toripalimab-tpzi",
+    "date": "2023-10-27"
+   },
+   {
+    "name": "Fruzaqla",
+    "ing": "fruquintinib",
+    "date": "2023-11-08"
+   },
+   {
+    "name": "Defencath",
+    "ing": "taurolidine, heparin",
+    "date": "2023-11-15"
+   },
+   {
+    "name": "Augtyro",
+    "ing": "repotrectinib",
+    "date": "2023-11-15"
+   },
+   {
+    "name": "Ryzneuta",
+    "ing": "efbemalenograstim alfa-vuxw",
+    "date": "2023-11-16"
+   },
+   {
+    "name": "Truqap",
+    "ing": "capivasertib",
+    "date": "2023-11-16"
+   },
+   {
+    "name": "Ogsiveo",
+    "ing": "nirogacestat",
+    "date": "2023-11-27"
+   },
+   {
+    "name": "Fabhalta",
+    "ing": "iptacopan",
+    "date": "2023-12-05"
+   },
+   {
+    "name": "Filsuvez",
+    "ing": "birch triterpenes",
+    "date": "2023-12-18"
+   },
+   {
+    "name": "Wainua",
+    "ing": "eplontersen",
+    "date": "2023-12-21"
+   }
+  ],
+  "2022": [
+   {
+    "name": "NexoBrid",
+    "ing": "anacaulase-bcdb",
+    "date": "2022-12-28"
+   },
+   {
+    "name": "Briumvi",
+    "ing": "ublituximab-xiiy",
+    "date": "2022-12-28"
+   },
+   {
+    "name": "Xenoview",
+    "ing": "hyperpolarized Xe-129",
+    "date": "2022-12-23"
+   },
+   {
+    "name": "Lunsumio",
+    "ing": "mosunetuzumab-axgb",
+    "date": "2022-12-22"
+   },
+   {
+    "name": "Sunlenca",
+    "ing": "lenacapavir",
+    "date": "2022-12-22"
+   },
+   {
+    "name": "Krazati",
+    "ing": "adagrasib",
+    "date": "2022-12-12"
+   },
+   {
+    "name": "Rezlidhia",
+    "ing": "olutasidenib",
+    "date": "2022-12-01"
+   },
+   {
+    "name": "Tzield",
+    "ing": "teplizumab-mzwv",
+    "date": "2022-11-18"
+   },
+   {
+    "name": "Elahere",
+    "ing": "mirvetuximab soravtansine-gynx",
+    "date": "2022-11-14"
+   },
+   {
+    "name": "Tecvayli",
+    "ing": "teclistamab-cqyv",
+    "date": "2022-10-25"
+   },
+   {
+    "name": "Imjudo",
+    "ing": "tremelimumab",
+    "date": "2022-10-21"
+   },
+   {
+    "name": "Lytgobi",
+    "ing": "futibatinib",
+    "date": "2022-09-30"
+   },
+   {
+    "name": "Relyvrio",
+    "ing": "sodium phenylbutyrate/taurursodiol",
+    "date": "2022-09-29"
+   },
+   {
+    "name": "Omlonti",
+    "ing": "oomidenepag isopropyl",
+    "date": "2022-09-22"
+   },
+   {
+    "name": "Elucirem",
+    "ing": "gadopiclenol",
+    "date": "2022-09-21"
+   },
+   {
+    "name": "Terlivaz",
+    "ing": "terlipressin",
+    "date": "2022-09-14"
+   },
+   {
+    "name": "Rolvedon",
+    "ing": "eflapegrastim",
+    "date": "2022-09-09"
+   },
+   {
+    "name": "Sotyktu",
+    "ing": "deucravacitinib",
+    "date": "2022-09-09"
+   },
+   {
+    "name": "Daxxify",
+    "ing": "daxibotulinumtoixnA-lanm",
+    "date": "2022-09-07"
+   },
+   {
+    "name": "Spevigo",
+    "ing": "spesolimab-sbzo",
+    "date": "2022-09-01"
+   },
+   {
+    "name": "Xenpozyme",
+    "ing": "olipudase alfa",
+    "date": "2022-08-31"
+   },
+   {
+    "name": "Amvuttra",
+    "ing": "vutrisiran",
+    "date": "2022-06-13"
+   },
+   {
+    "name": "Vtama",
+    "ing": "tapinarof",
+    "date": "2022-05-23"
+   },
+   {
+    "name": "Mounjaro",
+    "ing": "tirzepatide",
+    "date": "2022-05-13"
+   },
+   {
+    "name": "Voquezna",
+    "ing": "vonoprazan, amoxicillin, and clarithromycin",
+    "date": "2022-05-03"
+   },
+   {
+    "name": "Camzyos",
+    "ing": "mavacamten",
+    "date": "2022-04-28"
+   },
+   {
+    "name": "Vivjoa",
+    "ing": "oteseconazole",
+    "date": "2022-04-26"
+   },
+   {
+    "name": "Pluvicto",
+    "ing": "lutetium (177Lu) vipivotide tetraxetan",
+    "date": "2022-03-23"
+   },
+   {
+    "name": "Opdualag",
+    "ing": "nivolumab and relatlimab-rmbw",
+    "date": "2022-03-18"
+   },
+   {
+    "name": "Ztalmy",
+    "ing": "ganaxolone",
+    "date": "2022-03-18"
+   },
+   {
+    "name": "Vonjo",
+    "ing": "pacritinib",
+    "date": "2022-02-28"
+   },
+   {
+    "name": "Pyrukynd",
+    "ing": "mitapivat",
+    "date": "2022-02-17"
+   },
+   {
+    "name": "Enjaymo",
+    "ing": "sutimlimab-jome",
+    "date": "2022-02-04"
+   },
+   {
+    "name": "Vabysmo",
+    "ing": "faricimab-svoa",
+    "date": "2022-01-28"
+   },
+   {
+    "name": "Kimmtrak",
+    "ing": "tebentafusp-tebn",
+    "date": "2022-01-25"
+   },
+   {
+    "name": "Cibinqo",
+    "ing": "abrocitinib",
+    "date": "2022-01-14"
+   },
+   {
+    "name": "Quviviq",
+    "ing": "daridorexant",
+    "date": "2022-01-07"
+   }
+  ],
+  "2021": [
+   {
+    "name": "Adbry",
+    "ing": "tralokinumab-ldrm",
+    "date": "2021-12-27"
+   },
+   {
+    "name": "Leqvio",
+    "ing": "inclisiran",
+    "date": "2021-12-22"
+   },
+   {
+    "name": "Vyvgart",
+    "ing": "efgartigimod alfa-fcab",
+    "date": "2021-12-17"
+   },
+   {
+    "name": "Tezspire",
+    "ing": "tezepelumab-ekko",
+    "date": "2021-12-17"
+   },
+   {
+    "name": "Cytalux",
+    "ing": "pafolacianine",
+    "date": "2021-11-29"
+   },
+   {
+    "name": "Livtencity",
+    "ing": "maribavir",
+    "date": "2021-11-23"
+   },
+   {
+    "name": "Voxzogo",
+    "ing": "vosoritide",
+    "date": "2021-11-19"
+   },
+   {
+    "name": "Besremi",
+    "ing": "ropeginterferon alfa-2b-njft",
+    "date": "2021-11-12"
+   },
+   {
+    "name": "Scemblix",
+    "ing": "asciminib",
+    "date": "2021-10-29"
+   },
+   {
+    "name": "Tavneos",
+    "ing": "avacopan",
+    "date": "2021-10-07"
+   },
+   {
+    "name": "Livmarli",
+    "ing": "maralixibat",
+    "date": "2021-09-29"
+   },
+   {
+    "name": "Qulipta",
+    "ing": "atogepant",
+    "date": "2021-09-28"
+   },
+   {
+    "name": "Tivdak",
+    "ing": "tisotumab vedotin-tftv",
+    "date": "2021-09-20"
+   },
+   {
+    "name": "Exkivity",
+    "ing": "mobocertinib",
+    "date": "2021-09-15"
+   },
+   {
+    "name": "Skytrofa",
+    "ing": "lonapegsomatropin-tcgd",
+    "date": "2021-08-25"
+   },
+   {
+    "name": "Korsuva",
+    "ing": "difelikefalin",
+    "date": "2021-08-23"
+   },
+   {
+    "name": "Welireg",
+    "ing": "belzutifan",
+    "date": "2021-08-13"
+   },
+   {
+    "name": "Nexviazyme",
+    "ing": "avalglucosidase alfa-ngpt",
+    "date": "2021-08-06"
+   },
+   {
+    "name": "Saphnelo",
+    "ing": "anifrolumab-fnia",
+    "date": "2021-07-30"
+   },
+   {
+    "name": "Bylvay",
+    "ing": "odevixibat",
+    "date": "2021-07-20"
+   },
+   {
+    "name": "Rezurock",
+    "ing": "belumosudil",
+    "date": "2021-07-16"
+   },
+   {
+    "name": "Fexinidazole",
+    "ing": "fexinidazole",
+    "date": "2021-07-16"
+   },
+   {
+    "name": "Kerendia",
+    "ing": "finerenone",
+    "date": "2021-07-09"
+   },
+   {
+    "name": "Rylaze",
+    "ing": "asparaginase erwinia chrysanthemi (recombinant)-rywn",
+    "date": "2021-06-30"
+   },
+   {
+    "name": "Aduhelm",
+    "ing": "aducanumab-avwa",
+    "date": "2021-06-07"
+   },
+   {
+    "name": "Brexafemme",
+    "ing": "ibrexafungerp",
+    "date": "2021-06-01"
+   },
+   {
+    "name": "Lybalvi",
+    "ing": "olanzapine and samidorphan",
+    "date": "2021-05-28"
+   },
+   {
+    "name": "Truseltiq",
+    "ing": "infigratinib",
+    "date": "2021-05-28"
+   },
+   {
+    "name": "Lumakras",
+    "ing": "sotorasib",
+    "date": "2021-05-28"
+   },
+   {
+    "name": "Pylarify",
+    "ing": "piflufolastat F 18",
+    "date": "2021-05-26"
+   },
+   {
+    "name": "Rybrevant",
+    "ing": "amivantamab-vmjw",
+    "date": "2021-05-21"
+   },
+   {
+    "name": "Empaveli",
+    "ing": "pegcetacoplan",
+    "date": "2021-05-14"
+   },
+   {
+    "name": "Zynlonta",
+    "ing": "loncastuximab tesirine-lpyl",
+    "date": "2021-04-23"
+   },
+   {
+    "name": "Jemperli",
+    "ing": "dostarlimab-gxly",
+    "date": "2021-04-22"
+   },
+   {
+    "name": "Nextstellis",
+    "ing": "drospirenone and estetrol",
+    "date": "2021-04-15"
+   },
+   {
+    "name": "Qelbree",
+    "ing": "viloxazine",
+    "date": "2021-04-02"
+   },
+   {
+    "name": "Zegalogue",
+    "ing": "dasiglucagon",
+    "date": "2021-03-22"
+   },
+   {
+    "name": "Ponvory",
+    "ing": "ponesimod",
+    "date": "2021-03-18"
+   },
+   {
+    "name": "Fotivda",
+    "ing": "tivozanib",
+    "date": "2021-03-10"
+   },
+   {
+    "name": "Azstarys",
+    "ing": "serdexmethylphenidate and dexmethylphenidate",
+    "date": "2021-03-02"
+   },
+   {
+    "name": "Pepaxto",
+    "ing": "melphalan flufenamide",
+    "date": "2021-02-26"
+   },
+   {
+    "name": "Nulibry",
+    "ing": "fosdenopterin",
+    "date": "2021-02-26"
+   },
+   {
+    "name": "Amondys 45",
+    "ing": "casimersen",
+    "date": "2021-02-25"
+   },
+   {
+    "name": "Cosela",
+    "ing": "trilaciclib",
+    "date": "2021-02-12"
+   },
+   {
+    "name": "Evkeeza",
+    "ing": "evinacumab-dgnb",
+    "date": "2021-02-11"
+   },
+   {
+    "name": "Ukoniq",
+    "ing": "umbralisib",
+    "date": "2021-02-05"
+   },
+   {
+    "name": "Tepmetko",
+    "ing": "tepotinib",
+    "date": "2021-02-03"
+   },
+   {
+    "name": "Lupkynis",
+    "ing": "voclosporin",
+    "date": "2021-01-22"
+   },
+   {
+    "name": "Cabenuva",
+    "ing": "cabotegravir and rilpivirine",
+    "date": "2021-01-21"
+   },
+   {
+    "name": "Verquvo",
+    "ing": "vericiguat",
+    "date": "2021-01-19"
+   }
+  ],
+  "2020": [
+   {
+    "name": "artesunate",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Ayvakit",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Barhemsys",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Blenrep",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Byfavo",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Cerianna",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Danyelza",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Detectnet",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Dojolvi",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Ebanga",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Enspryng",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Evrysdi",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Ga 68 PSMA-11",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Gavreto",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Gemtesa",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Imcivree",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Inmazeb",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Inqovi",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Isturisa",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Klisyri",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Koselugo",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Lampit",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Margenza",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Monjuvi",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Nexletol",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Nurtec ODT",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Olinvyk",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Ongentys",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Orgovyx",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Orladeyo",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Oxlumo",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Pemazyre",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Pizensy",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Qinlock",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Retevmo",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Rukobia",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Sarclisa",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Sogroya",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Tabrecta",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Tauvid",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Tazverik",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Tepezza",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Trodelvy",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Tukysa",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Uplizna",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Veklury",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Viltepso",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Vyepti",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Winlevi",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Xeglyze",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Zeposia",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Zepzelca",
+    "ing": null,
+    "date": null
+   },
+   {
+    "name": "Zokinvy",
+    "ing": null,
+    "date": null
+   }
+  ]
+ }
+}

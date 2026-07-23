@@ -9,7 +9,7 @@ import {
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
-const TODAY = new Date('2026-07-22T00:00:00')
+const TODAY = new Date() // 运行时当前日期（Fix 4：不再硬编码）
 const PAGE_SIZE = 200
 
 type StageKey = '引入期' | '成长期' | '成熟期' | '衰退期' | '仿制成熟期'
@@ -481,7 +481,7 @@ export default function LifecyclePage({
                                   const ga = globalAccess?.[r.ingredient]
                                   if (!ga) return null
                                   if (ga.match_type === 'unmatched' || !ga.ema_status) {
-                                    return <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">🇪🇺 EMA 未收录</span>
+                                    return <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">🇪🇺 EMA 集中审批未检索到</span>
                                   }
                                   if (ga.ema_status === 'authorised') {
                                     return (

@@ -124,14 +124,14 @@ export default function GlobalLagSection({ onSelectIngredient }: {
             <p className="text-xs text-slate-400">🇪🇺 EMA 中位滞后</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{lag.ema.median} 个月</p>
             <p className="mt-0.5 text-xs text-slate-400">
-              n={lag.ema.n} · P25 {lag.ema.p25} / P75 {lag.ema.p75}
+              n={lag.ema.n} · P25 {lag.ema.p25} / P75 {lag.ema.p75} · 极值 {lag.ema.min}~{lag.ema.max} 月
             </p>
           </div>
           <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-4 py-3">
             <p className="text-xs text-slate-400">🇯🇵 PMDA 中位滞后</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{lag.pmda.median} 个月</p>
             <p className="mt-0.5 text-xs text-slate-400">
-              n={lag.pmda.n} · P25 {lag.pmda.p25} / P75 {lag.pmda.p75}
+              n={lag.pmda.n} · P25 {lag.pmda.p25} / P75 {lag.pmda.p75} · 极值 {lag.pmda.min}~{lag.pmda.max} 月
             </p>
           </div>
           <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-4 py-3">
@@ -164,7 +164,7 @@ export default function GlobalLagSection({ onSelectIngredient }: {
         </div>
 
         <p className="text-xs leading-relaxed text-slate-400">
-          统计口径：2020 年起 FDA 史上首次获批（NME 口径）的 NDA/BLA 成分；EMA 取集中审批最早授权日；PMDA 取官方新药清单（2004 年起）最早获批日；滞后 = 他地日期 − FDA 日期（月），负值 = 先于 FDA 获批；美版生物类似药（-XXXX 后缀）不参与时滞统计。
+          统计口径：2020 年起 FDA 史上首次获批（NME 口径）的 NDA/BLA 成分；EMA 取集中审批最早授权日；PMDA 取官方新药清单（2004 年起）最早获批日；滞后 = 他地日期 − FDA 日期（月），负值 = 先于 FDA 获批；美版生物类似药（-XXXX 后缀）不参与时滞统计。极端负值（远早于 FDA 获批）通常反映该成分早年在其他市场以其他名称/盐型上市，属匹配口径内的正常长尾，不代表数据错误。
         </p>
       </CardContent>
     </Card>

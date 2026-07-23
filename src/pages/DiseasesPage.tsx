@@ -321,13 +321,19 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
           {/* 相关成分 / 在研管线（实体关系层） */}
           {(() => {
             const links = entityMap?.diseases[selected.slug]
-            if (!links || (links.ingredients.length === 0 && links.trial_count === 0)) return null
+            if (!links || (links.ingredients.length === 0 && links.trial_count === 0 && links.trials_coverage !== 'not_covered')) return null
+            const ingsTotal = links.ingredients_total ?? links.ingredients.length
+            const truncated = ingsTotal > links.ingredients.length
             return (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">相关成分 / 在研管线</CardTitle>
-                  {links.trial_count > 0 && (
+                  {links.trials_coverage === 'not_covered' ? (
+                    <p className="text-xs text-slate-400">该疾病暂未接入临床试验索引（试验数据未覆盖，不代表无在研试验）</p>
+                  ) : links.trial_count > 0 ? (
                     <p className="text-xs text-slate-400">关联临床试验 {links.trial_count} 项（ClinicalTrials.gov）</p>
+                  ) : (
+                    <p className="text-xs text-slate-400">临床试验索引中该疾病确为 0 项（ClinicalTrials.gov 已覆盖）</p>
                   )}
                 </CardHeader>
                 <CardContent>
@@ -342,6 +348,11 @@ export default function DiseasesPage({ onSelectDrug, pendingDisease, onConsumePe
                         {ing}
                       </button>
                     ))}
+                    {truncated && (
+                      <span className="rounded-full bg-slate-50 px-2.5 py-1 text-xs text-slate-400">
+                        +{ingsTotal - links.ingredients.length} 个（共 {ingsTotal} 个，仅展示前 {links.ingredients.length}）
+                      </span>
+                    )}
                   </div>
                 </CardContent>
               </Card>

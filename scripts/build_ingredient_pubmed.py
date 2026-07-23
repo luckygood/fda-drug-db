@@ -99,7 +99,8 @@ def esummary(pmids):
 
 
 def base_term(ing):
-    return f'("{ing}"[Substance Name] OR "{ing}"[Title/Abstract]) AND 2023:2026[dp]'
+    _Y0 = date.today().year - 3
+    return f'("{ing}"[Substance Name] OR "{ing}"[Title/Abstract]) AND {_Y0}:{date.today().year}[dp]'
 
 
 def fetch_ingredient(ing):

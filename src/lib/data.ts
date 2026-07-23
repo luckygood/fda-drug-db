@@ -1026,19 +1026,26 @@ export function loadIngredientPubMed(): Promise<IngredientPubMedIndex> {
 // ---------- 实体关系层：成分 ↔ 企业 ↔ 疾病 ↔ 临床试验 ----------
 
 export interface EntityIngredientLinks {
-  diseases?: string[]   // 疾病 slug
-  companies?: string[]  // 企业 slug
-  trials?: string[]     // NCT 编号（按启动日期倒序，≤20）
+  diseases?: string[]   // 疾病 slug（展示截断 ≤20，全量见 diseases_total）
+  companies?: string[]  // 企业 slug（展示截断 ≤30，全量见 companies_total）
+  trials?: string[]     // NCT 编号（按启动日期倒序，≤20，全量见 trials_total）
+  diseases_total?: number
+  companies_total?: number
+  trials_total?: number
 }
 
 export interface EntityDiseaseLinks {
-  ingredients: string[]
+  ingredients: string[]        // 展示截断 ≤50，全量计数见 ingredients_total
+  ingredients_total?: number
   trial_count: number
+  /** covered = 已接入试验索引（trial_count 可能确为 0）；not_covered = 未接入（不得显示为 0） */
+  trials_coverage?: 'covered' | 'not_covered'
 }
 
 export interface EntityCompanyLinks {
   name: string
-  ingredients: string[]
+  ingredients: string[]        // 展示截断 ≤50
+  ingredients_total?: number
 }
 
 export interface EntityMap {
@@ -1131,10 +1138,19 @@ export interface NmeIngredient {
   company: string
   type: string
   diseases: string[]
+  /** official = 命中 FDA CDER 官方名单；derived = 平台补充推断 */
+  source: 'official' | 'derived'
+  official_name?: string
+  /** 官方名单中存在但本地无推导记录（仅名单占位） */
+  stub?: boolean
 }
 
 export interface NmeYear {
   total: number
+  /** FDA CDER 官方年度计数（2026 年未发布时为 null） */
+  official_count: number | null
+  official_matched: number
+  derived_extra: number
   type_dist: Record<string, number>
   monthly: number[]
   top_areas: [string, number][]
@@ -1153,7 +1169,10 @@ export interface NmeYear {
 
 export interface NmeAnnual {
   generated_at: string
+  method_version?: string
   scope: string
+  official_source_url: string
+  official_retrieved_at: string
   years: Record<string, NmeYear>
 }
 
@@ -1188,6 +1207,9 @@ export interface DiseasePubMedEntry {
 
 export interface DiseasePubMed {
   generated_at: string
+  method_version?: string
+  /** 检索窗口，如 "2023:2026" */
+  window?: string
   diseases: Record<string, DiseasePubMedEntry>
 }
 

@@ -7,7 +7,6 @@ import {
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
-const TODAY = new Date('2026-07-22T00:00:00')
 
 const STAGE_ORDER = ['引入期', '成长期', '成熟期', '衰退期', '仿制成熟期']
 const STAGE_STYLE: Record<string, string> = {
@@ -40,25 +39,30 @@ export default function DiseaseReport({ entry, onBack }: {
   const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
   const [globalAccess, setGlobalAccess] = useState<GlobalAccess | null>(null)
   const [pubmed, setPubmed] = useState<DiseasePubMedEntry | null>(null)
+  const [pubmedWindow, setPubmedWindow] = useState('近三年')
+  const [generatedAt, setGeneratedAt] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
-      loadLifecycleIndex().then((d) => setLifecycle(d.records)).catch(() => setLifecycle(null)),
+      loadLifecycleIndex().then((d) => { setLifecycle(d.records); setGeneratedAt(d.generated_at) }).catch(() => setLifecycle(null)),
       loadEntityMap().then(setEntityMap).catch(() => setEntityMap(null)),
       loadGlobalAccess().then(setGlobalAccess).catch(() => setGlobalAccess(null)),
       loadDiseasePubMed()
-        .then((d) => setPubmed(d.diseases[entry.slug] ?? null))
+        .then((d) => { setPubmed(d.diseases[entry.slug] ?? null); if (d.window) setPubmedWindow(d.window.replace(':', '–')) })
         .catch(() => setPubmed(null)),
     ]).finally(() => setLoading(false))
   }, [entry.slug])
 
-  // 疾病关联成分（实体关系层）
+  // 疾病关联成分（实体关系层；ingredients 展示截断 ≤50，统计用 ingredients_total）
+  const diseaseLinks = entityMap?.diseases[entry.slug]
   const ingredients = useMemo(
-    () => entityMap?.diseases[entry.slug]?.ingredients ?? [],
-    [entityMap, entry.slug],
+    () => diseaseLinks?.ingredients ?? [],
+    [diseaseLinks],
   )
-  const trialCount = entityMap?.diseases[entry.slug]?.trial_count ?? 0
+  const ingredientsTotal = diseaseLinks?.ingredients_total ?? ingredients.length
+  const trialCount = diseaseLinks?.trial_count ?? 0
+  const trialsCoverage = diseaseLinks?.trials_coverage
 
   // 有生命周期档案的成分
   const withRec = useMemo(
@@ -125,7 +129,7 @@ export default function DiseaseReport({ entry, onBack }: {
     )
   }
 
-  const todayStr = TODAY.toISOString().slice(0, 10)
+  const todayStr = generatedAt || new Date().toISOString().slice(0, 10)
   const stageKeys = [...STAGE_ORDER.filter((s) => byStage.has(s)), ...(byStage.has('未建档') ? ['未建档'] : [])]
 
   return (
@@ -160,11 +164,16 @@ export default function DiseaseReport({ entry, onBack }: {
       </section>
 
       {/* 一、治疗全景 */}
-      <Chapter title={`一、治疗全景（${ingredients.length} 个相关活性成分）`}>
+      <Chapter title={`一、治疗全景（${ingredientsTotal} 个相关活性成分）`}>
         {ingredients.length === 0 ? (
           <Muted>该疾病暂无成分级实体映射，无法按生命周期阶段展开。</Muted>
         ) : (
           <div className="space-y-3">
+            {ingredientsTotal > ingredients.length && (
+              <p className="text-xs text-slate-400">
+                注：共 {ingredientsTotal} 个相关成分，以下按生命周期阶段展开前 {ingredients.length} 个（展示上限）。
+              </p>
+            )}
             {stageKeys.map((stage) => {
               const names = byStage.get(stage)!
               const shown = names.slice(0, NAME_CAP)
@@ -196,7 +205,7 @@ export default function DiseaseReport({ entry, onBack }: {
         ) : (
           <dl className="divide-y divide-slate-100">
             {[
-              ['相关成分总数', `${ingredients.length} 个`],
+              ['相关成分总数', `${ingredientsTotal} 个`],
               ['持证企业数', density.companies ? `${density.companies} 家` : '—'],
               ['ANDA 仿制竞争总数', `${density.anda.toLocaleString()} 个`],
               ['短缺风险成分数', density.shortage ? `${density.shortage} 个` : '无'],
@@ -224,7 +233,7 @@ export default function DiseaseReport({ entry, onBack }: {
             </p>
             {globalStats.unmatched.length > 0 && (
               <p className="text-xs text-slate-400">
-                EMA 暂未收录：{globalStats.unmatched.slice(0, NAME_CAP).join('、')}
+                EMA 集中审批未检索到：{globalStats.unmatched.slice(0, NAME_CAP).join('、')}
                 {globalStats.unmatched.length > NAME_CAP && ` 等 +${globalStats.unmatched.length - NAME_CAP} 个`}
               </p>
             )}
@@ -236,7 +245,7 @@ export default function DiseaseReport({ entry, onBack }: {
       </Chapter>
 
       {/* 四、学术证据 */}
-      <Chapter title="四、学术证据（PubMed 2023–2026）">
+      <Chapter title={`四、学术证据（PubMed ${pubmedWindow}）`}>
         {!pubmed ? (
           <Muted>该疾病暂未纳入 PubMed 证据覆盖（当前覆盖 22 个高数据量疾病）。</Muted>
         ) : (
@@ -271,12 +280,14 @@ export default function DiseaseReport({ entry, onBack }: {
 
       {/* 五、在研管线 */}
       <Chapter title="五、在研管线">
-        {trialCount > 0 ? (
+        {trialsCoverage === 'not_covered' ? (
+          <Muted>该疾病暂未接入临床试验索引（试验数据未覆盖，不代表无在研试验）。</Muted>
+        ) : trialCount > 0 ? (
           <p className="text-sm text-slate-700">
             关联临床试验 <b>{trialCount}</b> 项（ClinicalTrials.gov 索引）。
           </p>
         ) : (
-          <Muted>该疾病暂无临床试验索引数据。</Muted>
+          <p className="text-sm text-slate-700">临床试验索引中该疾病确为 <b>0</b> 项（索引已覆盖该疾病）。</p>
         )}
         <p className="mt-1 text-xs text-slate-400">
           注：当前仅提供试验计数；逐试验明细（阶段/申办方/终点）将在后续版本接入。

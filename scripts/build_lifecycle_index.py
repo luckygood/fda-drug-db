@@ -13,9 +13,11 @@ from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
 
+from build_common import write_dataset
+
 REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "public" / "data"
-TODAY = date(2026, 7, 22)  # 固定的“今天”
+TODAY = date.today()  # 运行当天（Fix 4：不再硬编码）
 MAX_PLCM = 10
 
 # marketing_status 值视为“仍在市”的状态
@@ -237,15 +239,12 @@ def main():
     expiring_24m.sort(key=lambda x: x["expiry"])
 
     out = {
-        "generated_at": TODAY.isoformat(),
         "total_ingredients": len(records),
         "stage_counts": dict(stage_counts),
         "alerts": {"expiring_24m": expiring_24m},
         "records": records,
     }
-    out_path = DATA / "lifecycle_index.json"
-    with open(out_path, "w") as fh:
-        json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))
+    out_path = write_dataset("lifecycle_index", out, TODAY)
 
     # ---------- 统计摘要 ----------
     print("=== 生命周期索引构建完成 ===")

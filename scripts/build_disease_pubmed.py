@@ -4,7 +4,7 @@
 选取口径：diseases/index.json 中按获批药物数（drug_count）降序取 Top 20，
 并强制纳入两个试点疾病（atopic-dermatitis、iga-nephropathy）——共 22 个疾病。
 
-每个疾病查询 NCBI eutils（检索词 = 疾病英文名[MeSH/Title-Abstract]，窗口 2023:2026[dp]）：
+每个疾病查询 NCBI eutils（检索词 = 疾病英文名[MeSH/Title-Abstract]，滚动三年窗口 [dp]）：
   - clinical_count: clinical trial / RCT 文献数
   - review_count:   review / meta-analysis 文献数
   - recent:         最新 8 篇（临床+综述优先检索，按日期倒序；pmid/title/journal/pubdate/pubtype）
@@ -25,6 +25,8 @@ import urllib.request
 from datetime import date
 from pathlib import Path
 
+from build_common import write_dataset
+
 REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "public" / "data"
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
@@ -33,6 +35,11 @@ MAX_RETRY = 3
 TOP_N = 20
 # 试点疾病：slug -> 英文名兜底（iga-nephropathy 暂无本地疾病页，仍预取数据备报告 A 使用）
 PILOTS = {"atopic-dermatitis": "atopic dermatitis", "iga-nephropathy": "IgA nephropathy"}
+
+# 滚动三年窗口（Fix 4：动态化，不再硬编码 2023:2026）
+TODAY = date.today()
+WINDOW_START = TODAY.year - 3
+WINDOW = f"{WINDOW_START}:{TODAY.year}"
 
 # 英文名 → PubMed 检索词微调（index.json 的 name_en 不够检索友好时覆盖）
 TERM_OVERRIDE = {
@@ -119,7 +126,7 @@ def disease_term(slug, name_en):
         base = TERM_OVERRIDE[slug]
     else:
         base = f'"{name_en}"[MeSH Terms] OR "{name_en}"[Title/Abstract]'
-    return f"({base}) AND 2023:2026[dp]"
+    return f"({base}) AND {WINDOW}[dp]"
 
 
 CLINICAL_PT = '("clinical trial"[pt] OR "randomized controlled trial"[pt])'
@@ -163,12 +170,10 @@ def main():
             part = json.load(open(f))
             merged.update(part["diseases"])
         out = {
-            "generated_at": date.today().isoformat(),
+            "window": WINDOW,
             "diseases": merged,
         }
-        out_path = DATA / "disease_pubmed.json"
-        with open(out_path, "w") as fh:
-            json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))
+        out_path = write_dataset("disease_pubmed", out)
         print(f"merged {len(merged)} diseases -> {out_path} ({out_path.stat().st_size/1024:.0f} KB)")
         return
 
