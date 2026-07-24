@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""企业地图 phase 1: 最简四字段（名称/城市/国家/官网）
+"""企业地图 phase 2: 最简四字段（名称/城市/国家/官网）+ FDA 画像匹配
 来源: BIO-Europe_2025.db (SQLite) + PharmaGO 中国申报药品库·单抗 (xlsx)
-输出: public/data/companies_map.json
+输出: public/data/companies_map.json（不含来源字段；fda_slug 为站内企业画像链接键）
+
+phase 2 变更:
+- canon key 强化: 去除全部非字母数字字符（容忍空格/标点差异，如 "F. Hoffmann" vs "F.Hoffmann"）
+- 国家归一为英文规范名（中国→China、美国→United States 等；前端用 zh 标签映射展示）
+- FDA 匹配: canon 名 → companies/index.json 及 sponsor_map.json 变体反查，输出 fda_slug
 """
 import json, re, sqlite3, sys
 from pathlib import Path
@@ -19,10 +24,40 @@ SUFFIX = re.compile(
 )
 
 def canon(name: str) -> str:
+    """phase 2: 仅保留字母/数字/中日韩字符（消除空格、标点、连字符差异）。"""
     n = (name or "").strip()
     n = SUFFIX.sub("", n).strip()
-    n = re.sub(r"\s+", " ", n)
+    n = re.sub(r"[^0-9A-Za-z一-鿿]+", "", n)
     return n.casefold()
+
+# 中文国家/地区名 → 英文规范名（xlsx 侧取值实测全集；未命中者保留原样并计数上报）
+COUNTRY_CN2EN = {
+    "中国": "China", "美国": "United States", "德国": "Germany", "日本": "Japan",
+    "瑞士": "Switzerland", "韩国": "South Korea", "英国": "United Kingdom", "法国": "France",
+    "加拿大": "Canada", "澳大利亚": "Australia", "意大利": "Italy", "瑞典": "Sweden",
+    "比利时": "Belgium", "荷兰": "Netherlands", "爱尔兰": "Ireland", "新加坡": "Singapore",
+    "丹麦": "Denmark", "俄罗斯": "Russia", "立陶宛": "Lithuania",
+    "台湾": "Taiwan", "香港": "Hong Kong", "开曼群岛": "Cayman Islands",
+}
+# 英文变体 → 英文规范名（BIO 库原始取值归一）
+COUNTRY_EN_ALIAS = {
+    "Hong Kong, S.A.R.": "Hong Kong",
+    "Taiwan, China": "Taiwan",
+    "Russian Federation": "Russia",
+}
+unmapped_countries = {}
+
+def norm_country(raw: str) -> str:
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    if raw in COUNTRY_CN2EN:
+        return COUNTRY_CN2EN[raw]
+    if raw in COUNTRY_EN_ALIAS:
+        return COUNTRY_EN_ALIAS[raw]
+    if re.search(r"[一-鿿]", raw):  # 含中文但未在映射表
+        unmapped_countries[raw] = unmapped_countries.get(raw, 0) + 1
+    return raw
 
 def split_country_region(raw: str):
     """'United States:Massachusetts' -> ('United States','Massachusetts'); 'Germany' -> ('Germany','')"""
@@ -34,10 +69,8 @@ def split_country_region(raw: str):
         return c.strip(), r.strip()
     return raw, ""
 
-CN_GEO = re.compile(r"中国(.+?)(?:;|$)")
-
 def parse_cn_location(raw: str):
-    """'美国; 中国重庆市; 中国香港特别行政区; 中国北京市' -> (countries, first_cn_city)"""
+    """'美国; 中国重庆市; 中国香港特别行政区; 中国北京市' -> (country, first_cn_city)"""
     raw = (raw or "").strip()
     if not raw:
         return "", ""
@@ -49,7 +82,7 @@ def parse_cn_location(raw: str):
             cities.append(p[2:])
         else:
             countries.append(p)
-    country = countries[0] if countries else ""
+    country = norm_country(countries[0]) if countries else ""
     city = cities[0] if cities else ""
     return country, city
 
@@ -96,8 +129,7 @@ con = sqlite3.connect(db)
 n_bio = 0
 for name, craw, website in con.execute("select name, country, website from companies"):
     country, region = split_country_region(craw)
-    if country == "China":
-        country = "中国"
+    country = norm_country(country)  # 已是英文为主，China 保持不变
     upsert(name, region, country, norm_website(website), "bio_europe_2025")
     n_bio += 1
 con.close()
@@ -122,6 +154,21 @@ for row in it:
             upsert(ent, city, country, "", "pharmago_cn_mab")
     n_pg_rows += 1
 
+# --- 3. FDA 企业画像匹配（canon → slug，含名称变体） ---
+idx = json.load(open(ROOT / "public" / "data" / "companies" / "index.json"))["companies"]
+sponsor_map = json.load(open(ROOT / "public" / "data" / "companies" / "sponsor_map.json"))
+canon2slug = {}
+for ent in idx:
+    canon2slug.setdefault(canon(ent["name"]), ent["slug"])
+for variant, slug in sponsor_map.items():
+    canon2slug.setdefault(canon(variant), slug)
+n_fda = 0
+for rec in companies.values():
+    slug = canon2slug.get(canon(rec["name"]))
+    rec["fda_slug"] = slug
+    if slug:
+        n_fda += 1
+
 records = sorted(companies.values(), key=lambda r: r["name"].casefold())
 both = sum(1 for r in records if len(r["sources"]) > 1)
 with_site = sum(1 for r in records if r["website"])
@@ -133,15 +180,18 @@ top = sorted(countries.items(), key=lambda x: -x[1])[:15]
 
 out = {
     "generated_at": str(date.today()),
-    "method_version": "1.0",
-    "scope_note": "企业地图一期：名称/城市/国家/官网四字段。city 为最细可用地区粒度（州/省/城市）。",
+    "method_version": "2.0",
+    "scope_note": "企业地图：名称/城市/国家/官网四字段。city 为最细可用地区粒度（州/省/城市）；国家为英文规范名。",
     "stats": {
         "total": len(records),
         "with_website": with_site,
         "countries": len(countries),
+        "fda_linked": n_fda,
         "top_countries": top,
     },
-    "companies": [{k: r[k] for k in ("name", "city", "country", "website")} for r in records],
+    "companies": [
+        {k: r[k] for k in ("name", "city", "country", "website", "fda_slug")} for r in records
+    ],
 }
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1))
@@ -156,4 +206,6 @@ priv["stats"]["pharmago_rows"] = n_pg_rows
 (ROOT / "scripts" / "snapshots" / f"companies_map-internal-{date.today():%Y%m%d}.json").write_text(
     json.dumps(priv, ensure_ascii=False))
 print(f"total={len(records)} bio={n_bio} pg_rows={n_pg_rows} merged={both} with_site={with_site} countries={len(countries)}")
+print(f"fda_linked={n_fda} ({n_fda / max(1, len(records)) * 100:.1f}%) unmapped_countries={unmapped_countries}")
 print("top:", top[:10])
+

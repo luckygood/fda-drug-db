@@ -4,6 +4,7 @@ import {
   Map as MapIcon, List, Globe,
 } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
+import * as echarts from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
 import CompanyReport from '@/components/CompanyReport'
@@ -43,6 +44,37 @@ function Badge({ text, color }: { text: string; color: 'violet' | 'amber' }) {
 
 const thCls = 'px-3 py-2 text-left text-xs font-medium text-slate-500'
 const tdCls = 'px-3 py-2 text-sm text-slate-700'
+
+/** 国家英文规范名 → 中文展示标签（常见国家；未收录者原样显示英文） */
+const COUNTRY_ZH: Record<string, string> = {
+  China: '中国', 'United States': '美国', Germany: '德国', 'United Kingdom': '英国',
+  Japan: '日本', 'South Korea': '韩国', France: '法国', Switzerland: '瑞士',
+  Canada: '加拿大', Australia: '澳大利亚', Italy: '意大利', Sweden: '瑞典',
+  Belgium: '比利时', Netherlands: '荷兰', Ireland: '爱尔兰', Singapore: '新加坡',
+  Denmark: '丹麦', Russia: '俄罗斯', Spain: '西班牙', Austria: '奥地利',
+  Israel: '以色列', India: '印度', Poland: '波兰', Norway: '挪威', Finland: '芬兰',
+  'Czech Republic': '捷克', Hungary: '匈牙利', Lithuania: '立陶宛', Portugal: '葡萄牙',
+  Greece: '希腊', Turkey: '土耳其', 'New Zealand': '新西兰', Brazil: '巴西',
+  Argentina: '阿根廷', Mexico: '墨西哥', Chile: '智利', 'South Africa': '南非',
+  Ukraine: '乌克兰', Estonia: '爱沙尼亚', Latvia: '拉脱维亚', Slovenia: '斯洛文尼亚',
+  Slovakia: '斯洛伐克', Croatia: '克罗地亚', Romania: '罗马尼亚', Bulgaria: '保加利亚',
+  Taiwan: '中国台湾', 'Hong Kong': '中国香港', 'Cayman Islands': '开曼群岛',
+  Bermuda: '百慕大', Luxembourg: '卢森堡', Iceland: '冰岛', Malta: '马耳他',
+  Serbia: '塞尔维亚', Jordan: '约旦', Kuwait: '科威特', Oman: '阿曼',
+  'Saudi Arabia': '沙特阿拉伯', Thailand: '泰国', 'United Arab Emirates': '阿联酋',
+  Andorra: '安道尔', Monaco: '摩纳哥', Liechtenstein: '列支敦士登', Cyprus: '塞浦路斯',
+  Jersey: '泽西岛', Egypt: '埃及', 'North Korea': '朝鲜',
+}
+const countryLabel = (c: string) => COUNTRY_ZH[c] ?? c
+
+/** 数据国家名 → 世界 GeoJSON 国家名（johan/world.geo.json 口径差异） */
+const GEO_NAME_ALIAS: Record<string, string> = {
+  'United States': 'United States of America',
+  Serbia: 'Republic of Serbia',
+}
+const GEO_TO_DATA: Record<string, string> = Object.fromEntries(
+  Object.entries(GEO_NAME_ALIAS).map(([k, v]) => [v, k]),
+)
 
 /** 一句话定性企业构成 */
 function compositionLine(d: CompanyDetail): string {
@@ -91,6 +123,7 @@ export default function CompaniesPage({
   const [mapCountry, setMapCountry] = useState<string | null>(null)
   const [mapQuery, setMapQuery] = useState('')
   const [mapShown, setMapShown] = useState(200)
+  const [worldReady, setWorldReady] = useState(false)
 
   useEffect(() => {
     loadCompanyIndex()
@@ -102,9 +135,22 @@ export default function CompaniesPage({
     loadCompaniesMap()
       .then(setMapData)
       .catch(() => setMapData(null))
+    // 世界地图 GeoJSON（本地 vendor，一次性注册）
+    fetch(`${import.meta.env.BASE_URL}data/world.geo.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((geo) => {
+        echarts.registerMap('world', geo)
+        setWorldReady(true)
+      })
+      .catch(() => setWorldReady(false))
   }, [])
 
-  // FDA 企业索引反查（地图企业名 → 已有企业画像 slug）
+  // FDA 企业索引反查（slug + 大写名兜底）
+  const fdaEntryBySlug = useMemo(() => {
+    const m = new Map<string, CompanyIndexEntry>()
+    for (const c of index ?? []) m.set(c.slug, c)
+    return m
+  }, [index])
   const fdaSlugByName = useMemo(() => {
     const m = new Map<string, CompanyIndexEntry>()
     for (const c of index ?? []) m.set(c.name.toUpperCase(), c)
@@ -132,6 +178,58 @@ export default function CompaniesPage({
       return true
     })
   }, [mapData, mapCountry, mapQuery])
+
+  // 世界地图热力 option（数据国家名 → GeoJSON 国家名经 GEO_NAME_ALIAS 转换）
+  const worldOption = useMemo((): EChartsOption | null => {
+    if (!worldReady || countryAgg.length === 0) return null
+    const max = Math.max(...countryAgg.map(([, n]) => n))
+    return {
+      tooltip: {
+        trigger: 'item',
+        formatter: (p: unknown) => {
+          const { name, value } = p as { name: string; value?: number }
+          const dataName = GEO_TO_DATA[name] ?? name
+          return `${countryLabel(dataName)}（${dataName}）<br/>企业数：${(value ?? 0).toLocaleString()}`
+        },
+      },
+      visualMap: {
+        min: 0,
+        max,
+        left: 8,
+        bottom: 8,
+        text: [`${max.toLocaleString()}`, '0'],
+        calculable: false,
+        inRange: { color: ['#f1f5f9', '#cbd5e1', '#93c5fd', '#3b82f6', '#1d4ed8'] },
+        textStyle: { color: '#64748b', fontSize: 10 },
+      },
+      series: [{
+        type: 'map',
+        map: 'world',
+        roam: true,
+        emphasis: { label: { show: false }, itemStyle: { areaColor: '#60a5fa' } },
+        itemStyle: { borderColor: '#e2e8f0', borderWidth: 0.5 },
+        data: countryAgg.map(([country, n]) => ({
+          name: GEO_NAME_ALIAS[country] ?? country,
+          value: n,
+          ...(mapCountry === country
+            ? { itemStyle: { areaColor: '#1e40af', borderColor: '#1e3a8a', borderWidth: 1.5 } }
+            : {}),
+        })),
+      }],
+    }
+  }, [worldReady, countryAgg, mapCountry])
+
+  // 地图点击 = 国家筛选（与 chips 双向同步）
+  const worldEvents = useMemo(() => ({
+    click: (params: unknown) => {
+      const name = (params as { name?: string }).name
+      if (!name) return
+      const country = GEO_TO_DATA[name] ?? name
+      if (!countryAgg.some(([c]) => c === country)) return
+      setMapCountry((prev) => (prev === country ? null : country))
+      setMapShown(200)
+    },
+  }), [countryAgg])
 
   // 点击搜索框外部时收起建议
   useEffect(() => {
@@ -248,7 +346,11 @@ export default function CompaniesPage({
           <>
             {/* 概要 tiles */}
             <div className="grid grid-cols-3 gap-4">
-              <StatCard label="企业总数" value={mapData.stats.total.toLocaleString()} />
+              <StatCard
+                label="企业总数"
+                value={mapData.stats.total.toLocaleString()}
+                sub={mapData.stats.fda_linked != null ? `FDA 画像直配 ${mapData.stats.fda_linked}` : undefined}
+              />
               <StatCard label="国家 / 地区数" value={String(mapData.stats.countries)} />
               <StatCard
                 label="有官网"
@@ -256,6 +358,29 @@ export default function CompaniesPage({
                 sub={`覆盖 ${Math.round((mapData.stats.with_website / Math.max(1, mapData.stats.total)) * 100)}%`}
               />
             </div>
+
+            {/* 世界地图热力 */}
+            {worldOption && (
+              <Card>
+                <CardContent className="pt-5">
+                  <p className="mb-1 text-xs text-slate-400">
+                    全球企业分布热力（点击国家 = 筛选，与下方国家标签联动）
+                    {mapCountry && (
+                      <button
+                        onClick={() => setMapCountry(null)}
+                        className="ml-2 text-blue-600 hover:underline"
+                      >
+                        清除筛选：{countryLabel(mapCountry)}
+                      </button>
+                    )}
+                  </p>
+                  <EChart option={worldOption} height={400} onEvents={worldEvents} />
+                  <p className="mt-1 text-xs text-slate-400">
+                    注：Singapore / Hong Kong 等 7 个小型国家或地区在世界底图中无独立区块，不在图上着色，仍可通过下方标签筛选。
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* 国家聚合表 */}
             <Card>
@@ -272,7 +397,7 @@ export default function CompaniesPage({
                           : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700'
                       }`}
                     >
-                      {country}
+                      {countryLabel(country)}
                       <span className="ml-1 font-semibold">{n.toLocaleString()}</span>
                     </button>
                   ))}
@@ -293,7 +418,7 @@ export default function CompaniesPage({
                   />
                 </div>
                 <p className="text-xs text-slate-400">
-                  {mapCountry ? `${mapCountry} · ` : ''}共 {mapFiltered.length.toLocaleString()} 家企业
+                  {mapCountry ? `${countryLabel(mapCountry)} · ` : ''}共 {mapFiltered.length.toLocaleString()} 家企业
                   {mapFiltered.length > mapShown && `，显示前 ${mapShown}`}
                 </p>
                 <div className="max-h-[560px] overflow-auto rounded-md border border-slate-100">
@@ -308,7 +433,8 @@ export default function CompaniesPage({
                     </thead>
                     <tbody>
                       {mapFiltered.slice(0, mapShown).map((c, i) => {
-                        const fdaEntry = fdaSlugByName.get(c.name.toUpperCase())
+                        const fdaEntry = (c.fda_slug ? fdaEntryBySlug.get(c.fda_slug) : undefined)
+                          ?? fdaSlugByName.get(c.name.toUpperCase())
                         return (
                           <tr key={`${c.name}-${i}`} className="border-t border-slate-100">
                             <td className={`${tdCls} max-w-[320px] truncate`}>
@@ -325,7 +451,7 @@ export default function CompaniesPage({
                               )}
                             </td>
                             <td className={`${tdCls} text-slate-500`}>{c.city || '—'}</td>
-                            <td className={`${tdCls} whitespace-nowrap text-slate-500`}>{c.country || '—'}</td>
+                            <td className={`${tdCls} whitespace-nowrap text-slate-500`}>{c.country ? countryLabel(c.country) : '—'}</td>
                             <td className={tdCls}>
                               {c.website ? (
                                 <a

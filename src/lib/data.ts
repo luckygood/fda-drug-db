@@ -1143,12 +1143,14 @@ export interface CompaniesMapCompany {
   city: string
   country: string
   website: string
+  /** 站内 FDA 企业画像 slug（canon 归一匹配；null = 无画像） */
+  fda_slug?: string | null
 }
 
 export interface CompaniesMap {
   generated_at: string
   scope_note: string
-  stats: { total: number; with_website: number; countries: number }
+  stats: { total: number; with_website: number; countries: number; fda_linked?: number }
   companies: CompaniesMapCompany[]
 }
 
