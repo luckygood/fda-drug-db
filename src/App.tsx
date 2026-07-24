@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark, FlaskConical, Newspaper, Hourglass, FileText, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { Search, BarChart3, Stethoscope, TrendingUp, Building2, Ship, ShieldAlert, Landmark, FlaskConical, Newspaper, Hourglass, FileText, Database, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
 import InsightsPage from './pages/InsightsPage'
@@ -13,10 +13,11 @@ import APIPage from './pages/APIPage'
 import FeedPage from './pages/FeedPage'
 import LifecyclePage from './pages/LifecyclePage'
 import ReportsPage from './pages/ReportsPage'
+import OpenDataPage from './pages/OpenDataPage'
 import GlobalSearch from './components/GlobalSearch'
 import { cn } from '@/lib/utils'
 
-type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent' | 'api' | 'feed' | 'lifecycle' | 'reports'
+type Page = 'search' | 'diseases' | 'insights' | 'mining' | 'companies' | 'china' | 'safety' | 'patent' | 'api' | 'feed' | 'lifecycle' | 'reports' | 'opendata'
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; applicationNumber: string; from: Page }
@@ -39,6 +40,7 @@ const NAV_GROUPS: NavGroup[] = [
       { key: 'insights', label: '数据洞察', icon: BarChart3 },
       { key: 'mining', label: '深度挖掘', icon: TrendingUp },
       { key: 'companies', label: '企业画像', icon: Building2 },
+      { key: 'opendata', label: '开放数据', icon: Database },
     ],
   },
   {
@@ -234,6 +236,8 @@ export default function App() {
             />
           ) : page === 'insights' ? (
             <InsightsPage onSelectIngredient={openLifecycleIngredient} />
+          ) : page === 'opendata' ? (
+            <OpenDataPage />
           ) : page === 'mining' ? (
             <MiningPage
               onSelectDrug={(appNo) => openDetail(appNo, 'mining')}
