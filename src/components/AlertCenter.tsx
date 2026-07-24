@@ -1,10 +1,10 @@
 // 预警中心（安全与市场页顶部大区块）：四张榜单卡 2x2，top 15 + 查看全部展开。
 import { useEffect, useMemo, useState } from 'react'
-import { Hourglass, AlertTriangle, Sparkles, OctagonAlert, ChevronDown, ChevronUp } from 'lucide-react'
+import { Hourglass, AlertTriangle, Sparkles, OctagonAlert, Compass, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  loadLifecycleIndex, loadReportMetrics, loadLabelSafety,
-  type LifecycleRecord, type ReportMetrics, type LabelSafetyIndex,
+  loadLifecycleIndex, loadReportMetrics, loadLabelSafety, loadCnAccess, loadGlobalAccess,
+  type LifecycleRecord, type ReportMetrics, type LabelSafetyIndex, type CnAccess, type GlobalAccess,
 } from '@/lib/data'
 
 const TOP_N = 15
@@ -89,6 +89,8 @@ export default function AlertCenter({ onSelectIngredient }: {
   const [generatedAt, setGeneratedAt] = useState('')
   const [metrics, setMetrics] = useState<ReportMetrics | null>(null)
   const [safety, setSafety] = useState<LabelSafetyIndex | null>(null)
+  const [cnAccess, setCnAccess] = useState<CnAccess | null>(null)
+  const [globalAccess, setGlobalAccess] = useState<GlobalAccess | null>(null)
 
   useEffect(() => {
     loadLifecycleIndex()
@@ -96,6 +98,8 @@ export default function AlertCenter({ onSelectIngredient }: {
       .catch(() => setRecords(null))
     loadReportMetrics().then(setMetrics).catch(() => setMetrics(null))
     loadLabelSafety().then(setSafety).catch(() => setSafety(null))
+    loadCnAccess().then(setCnAccess).catch(() => setCnAccess(null))
+    loadGlobalAccess().then(setGlobalAccess).catch(() => setGlobalAccess(null))
   }, [])
 
   // 1. 专利悬崖倒计时榜：成熟期 + ≤36 个月，按剩余月数升序
@@ -169,6 +173,34 @@ export default function AlertCenter({ onSelectIngredient }: {
       }))
   }, [safety])
 
+  // 5. License-in 雷达：FDA 已批、中国未检索到公开批准记录（unknown ≠ 未批），按 FDA 首获批倒序
+  const radar = useMemo(() => {
+    if (!cnAccess) return []
+    return Object.entries(cnAccess.records)
+      .filter(([, v]) => v.cn_status !== 'approved')
+      .map(([ing]) => {
+        const lc = records?.[ing]
+        const ga = globalAccess?.records[ing]
+        return { ing, fda: lc?.first_approval ?? '', originator: lc?.originator ?? null, ema: ga?.ema_status, pmda: ga?.pmda_status }
+      })
+      .sort((a, b) => b.fda.localeCompare(a.fda))
+      .map((r): Row => ({
+        name: r.ing,
+        cells: [
+          r.fda || '—',
+          <span className="block max-w-36 truncate text-slate-600" title={r.originator ?? undefined}>{r.originator ?? '—'}</span>,
+          <span className="flex gap-1">
+            {r.ema === 'authorised'
+              ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-700">EMA</span>
+              : <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-400">EMA</span>}
+            {r.pmda === 'approved'
+              ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-700">PMDA</span>
+              : <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-400">PMDA</span>}
+          </span>,
+        ],
+      }))
+  }, [cnAccess, records, globalAccess])
+
   if (!records) {
     return (
       <Card>
@@ -183,7 +215,7 @@ export default function AlertCenter({ onSelectIngredient }: {
         <AlertTriangle className="h-5 w-5 text-amber-500" />
         <h2 className="text-lg font-bold text-slate-900">预警中心</h2>
         <span className="text-xs text-slate-400">
-          专利悬崖 {cliff.length} · 短缺风险 {shortage.length} · 新品种 {fresh.length} · 黑框信号 {signals.length}
+          专利悬崖 {cliff.length} · 短缺风险 {shortage.length} · 新品种 {fresh.length} · 黑框信号 {signals.length} · License-in 雷达 {radar.length}
         </span>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
@@ -227,7 +259,21 @@ export default function AlertCenter({ onSelectIngredient }: {
           rows={signals}
           onPick={onSelectIngredient}
         />
+        <BoardCard
+          icon={<Compass className="h-4 w-4 text-indigo-500" />}
+          title="🧭 License-in 雷达"
+          total={radar.length}
+          source="FDA 已批（2020+）· 未检索到中国公开批准记录 — 未确认 ≠ 未批，仅供线索筛查，需人工核实 · NMPA 数据为公开文献正向确认"
+          generatedAt={cnAccess?.generated_at}
+          headers={['成分', 'FDA 首获批', '原研', 'EMA · PMDA']}
+          rows={radar}
+          onPick={onSelectIngredient}
+        />
       </div>
+      <p className="text-xs text-slate-400">
+        🧭 License-in 雷达方法学：NMPA 批准状态来自公开文献正向确认（CDE 官网直连被反爬拦截，未能权威全量核验）；
+        「未确认」不等于「未在中国获批」，覆盖以 2021–2025 年盘点文献为主且 2021/2022 较薄弱。上榜成分仅为潜在 license-in 线索，决策前请人工核实 CDE/官方渠道。
+      </p>
     </section>
   )
 }

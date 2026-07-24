@@ -1104,6 +1104,38 @@ export function loadGlobalAccess(): Promise<GlobalAccess> {
   return globalAccessPromise
 }
 
+// ---------- 全球可及性：NMPA（中国）批准状态（公开文献正向确认版） ----------
+
+export interface CnAccessRecord {
+  cn_status: 'approved' | 'not_found' | 'unknown'
+  cn_first_year: number | null
+  cn_product_count: number | null
+  match_type: 'curated_seed' | 'no_positive_evidence'
+  source: string | null
+}
+
+export interface CnAccess {
+  generated_at: string
+  scope: string
+  source_url: string
+  coverage_note: string
+  stats: Record<string, number>
+  records: Record<string, CnAccessRecord>
+}
+
+let cnAccessPromise: Promise<CnAccess> | null = null
+
+export function loadCnAccess(): Promise<CnAccess> {
+  if (!cnAccessPromise) {
+    cnAccessPromise = fetch(`${import.meta.env.BASE_URL}data/cn_access.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`cn_access.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<CnAccess>
+      })
+  }
+  return cnAccessPromise
+}
+
 // ---------- 全球可及性 L2：三地批准时滞 ----------
 
 export interface LagBlock {

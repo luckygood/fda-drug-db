@@ -6,8 +6,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import {
-  loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadSponsorMap, loadGlobalAccess, loadCtIngredient, loadLabelSafety, resolveCompanySlug,
-  type LifecycleRecord, type EntityMap, type IngredientPubMedIndex, type APIProduct, type GlobalAccessRecord, type CtDiseaseEntry, type LabelSafetyEntry,
+  loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadSponsorMap, loadGlobalAccess, loadCnAccess, loadCtIngredient, loadLabelSafety, resolveCompanySlug,
+  type LifecycleRecord, type EntityMap, type IngredientPubMedIndex, type APIProduct, type GlobalAccessRecord, type CnAccessRecord, type CtDiseaseEntry, type LabelSafetyEntry,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -97,6 +97,7 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
   const [pubmed, setPubmed] = useState<IngredientPubMedIndex | null>(null)
   const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
   const [globalRec, setGlobalRec] = useState<GlobalAccessRecord | null>(null)
+  const [cnRec, setCnRec] = useState<CnAccessRecord | null>(null)
   const [ct, setCt] = useState<CtDiseaseEntry | null>(null)
   const [bw, setBw] = useState<LabelSafetyEntry | null>(null)
 
@@ -113,6 +114,9 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
     loadGlobalAccess()
       .then((d) => setGlobalRec(d.records[apiName.toUpperCase()] ?? null))
       .catch(() => setGlobalRec(null))
+    loadCnAccess()
+      .then((d) => setCnRec(d.records[apiName.toUpperCase()] ?? null))
+      .catch(() => setCnRec(null))
     loadCtIngredient()
       .then((d) => setCt(d.ingredients[apiName.toUpperCase()] ?? null))
       .catch(() => setCt(null))
@@ -257,7 +261,26 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
                     <span className="font-normal">新药清单未检索到</span>
                   </span>
                 )}
-                <span className="text-xs text-slate-400">范围：2020 年至今 FDA 获批 NDA/BLA · EMA 集中审批 · PMDA 新药（2004 年起）</span>
+                {cnRec && (
+                  cnRec.cn_status === 'approved' ? (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700"
+                      title={cnRec.source ? `公开来源：${cnRec.source}` : undefined}
+                    >
+                      🇨🇳 NMPA
+                      <span className="font-normal">已获批{cnRec.cn_first_year ? ` ${cnRec.cn_first_year}` : ''}（公开文献确认）</span>
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500"
+                      title="NMPA 官方库未能全量核验；本状态仅代表公开文献未检索到批准记录，不等于未在中国获批，需人工核实"
+                    >
+                      🇨🇳 NMPA
+                      <span className="font-normal">公开来源未确认</span>
+                    </span>
+                  )
+                )}
+                <span className="text-xs text-slate-400">范围：2020 年至今 FDA 获批 NDA/BLA · EMA 集中审批 · PMDA 新药（2004 年起） · NMPA 为公开文献正向确认（未确认≠未批）</span>
               </div>
             </div>
           )}
