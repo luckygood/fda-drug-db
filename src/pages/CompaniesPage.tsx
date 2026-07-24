@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Loader2, Building2, Search, Award, Pill, Stethoscope, TrendingUp, FlaskConical, FileText,
+  Map as MapIcon, List, Globe,
 } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
 import CompanyReport from '@/components/CompanyReport'
 import {
-  loadCompanyIndex, loadCompanyShard, companyShardLetter, loadEntityMap,
-  type CompanyIndexEntry, type CompanyDetail, type EntityMap,
+  loadCompanyIndex, loadCompanyShard, companyShardLetter, loadEntityMap, loadCompaniesMap,
+  type CompanyIndexEntry, type CompanyDetail, type EntityMap, type CompaniesMap,
 } from '@/lib/data'
 
 const COLORS = {
@@ -84,6 +85,13 @@ export default function CompaniesPage({
 
   const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
 
+  // 企业地图模式
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
+  const [mapData, setMapData] = useState<CompaniesMap | null>(null)
+  const [mapCountry, setMapCountry] = useState<string | null>(null)
+  const [mapQuery, setMapQuery] = useState('')
+  const [mapShown, setMapShown] = useState(200)
+
   useEffect(() => {
     loadCompanyIndex()
       .then(setIndex)
@@ -91,7 +99,39 @@ export default function CompaniesPage({
     loadEntityMap()
       .then(setEntityMap)
       .catch(() => setEntityMap(null))
+    loadCompaniesMap()
+      .then(setMapData)
+      .catch(() => setMapData(null))
   }, [])
+
+  // FDA 企业索引反查（地图企业名 → 已有企业画像 slug）
+  const fdaSlugByName = useMemo(() => {
+    const m = new Map<string, CompanyIndexEntry>()
+    for (const c of index ?? []) m.set(c.name.toUpperCase(), c)
+    return m
+  }, [index])
+
+  // 地图：国家聚合（按企业数降序）
+  const countryAgg = useMemo(() => {
+    if (!mapData) return []
+    const counts = new Map<string, number>()
+    for (const c of mapData.companies) {
+      const k = c.country || '未知'
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])
+  }, [mapData])
+
+  // 地图：过滤后的企业列表
+  const mapFiltered = useMemo(() => {
+    if (!mapData) return []
+    const q = mapQuery.trim().toLowerCase()
+    return mapData.companies.filter((c) => {
+      if (mapCountry && (c.country || '未知') !== mapCountry) return false
+      if (q && !c.name.toLowerCase().includes(q) && !c.city.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [mapData, mapCountry, mapQuery])
 
   // 点击搜索框外部时收起建议
   useEffect(() => {
@@ -177,6 +217,160 @@ export default function CompaniesPage({
 
   return (
     <div className="space-y-6">
+      {/* 视图切换：企业列表 | 企业地图 */}
+      <div className="flex">
+        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+          {([
+            { key: 'list', label: '企业列表', icon: List },
+            { key: 'map', label: '🗺 企业地图', icon: MapIcon },
+          ] as const).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setViewMode(key)}
+              className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                viewMode === key ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {viewMode === 'map' && (
+        !mapData ? (
+          <div className="flex items-center justify-center gap-2 py-20 text-slate-500">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <p className="text-sm">正在加载企业地图…</p>
+          </div>
+        ) : (
+          <>
+            {/* 概要 tiles */}
+            <div className="grid grid-cols-3 gap-4">
+              <StatCard label="企业总数" value={mapData.stats.total.toLocaleString()} />
+              <StatCard label="国家 / 地区数" value={String(mapData.stats.countries)} />
+              <StatCard
+                label="有官网"
+                value={mapData.stats.with_website.toLocaleString()}
+                sub={`覆盖 ${Math.round((mapData.stats.with_website / Math.max(1, mapData.stats.total)) * 100)}%`}
+              />
+            </div>
+
+            {/* 国家聚合表 */}
+            <Card>
+              <CardContent className="pt-5">
+                <p className="mb-2 text-xs text-slate-400">按国家 / 地区聚合（点击筛选，再次点击取消）</p>
+                <div className="flex flex-wrap gap-2">
+                  {countryAgg.map(([country, n]) => (
+                    <button
+                      key={country}
+                      onClick={() => { setMapCountry(mapCountry === country ? null : country); setMapShown(200) }}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                        mapCountry === country
+                          ? 'border-blue-500 bg-blue-50 font-medium text-blue-700'
+                          : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                      }`}
+                    >
+                      {country}
+                      <span className="ml-1 font-semibold">{n.toLocaleString()}</span>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 搜索 + 企业清单 */}
+            <Card>
+              <CardContent className="space-y-3 pt-5">
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 focus-within:border-blue-400">
+                  <Search className="h-4 w-4 shrink-0 text-slate-400" />
+                  <input
+                    value={mapQuery}
+                    onChange={(e) => { setMapQuery(e.target.value); setMapShown(200) }}
+                    placeholder="按企业名称或城市筛选…"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                <p className="text-xs text-slate-400">
+                  {mapCountry ? `${mapCountry} · ` : ''}共 {mapFiltered.length.toLocaleString()} 家企业
+                  {mapFiltered.length > mapShown && `，显示前 ${mapShown}`}
+                </p>
+                <div className="max-h-[560px] overflow-auto rounded-md border border-slate-100">
+                  <table className="w-full border-collapse">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr>
+                        <th className={thCls}>企业名称</th>
+                        <th className={thCls}>城市 / 地区</th>
+                        <th className={thCls}>国家</th>
+                        <th className={`${thCls} w-14`}>官网</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mapFiltered.slice(0, mapShown).map((c, i) => {
+                        const fdaEntry = fdaSlugByName.get(c.name.toUpperCase())
+                        return (
+                          <tr key={`${c.name}-${i}`} className="border-t border-slate-100">
+                            <td className={`${tdCls} max-w-[320px] truncate`}>
+                              {fdaEntry ? (
+                                <button
+                                  onClick={() => { setViewMode('list'); selectCompany(fdaEntry) }}
+                                  className="font-medium text-blue-700 hover:underline"
+                                  title="查看 FDA 企业画像"
+                                >
+                                  {c.name}
+                                </button>
+                              ) : (
+                                <span className="font-medium text-slate-800">{c.name}</span>
+                              )}
+                            </td>
+                            <td className={`${tdCls} text-slate-500`}>{c.city || '—'}</td>
+                            <td className={`${tdCls} whitespace-nowrap text-slate-500`}>{c.country || '—'}</td>
+                            <td className={tdCls}>
+                              {c.website ? (
+                                <a
+                                  href={c.website}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                                  title={c.website}
+                                >
+                                  <Globe className="h-3.5 w-3.5" />
+                                  官网
+                                </a>
+                              ) : (
+                                <span className="text-xs text-slate-300">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      {mapFiltered.length === 0 && (
+                        <tr><td colSpan={4} className="py-8 text-center text-sm text-slate-400">无匹配企业</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {mapFiltered.length > mapShown && (
+                  <button
+                    onClick={() => setMapShown((n) => n + 200)}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    显示更多（剩余 {(mapFiltered.length - mapShown).toLocaleString()} 家）
+                  </button>
+                )}
+              </CardContent>
+            </Card>
+
+            <p className="text-center text-xs text-slate-400">
+              {mapData.scope_note} · 数据生成于 {mapData.generated_at}
+            </p>
+          </>
+        )
+      )}
+
+      {viewMode === 'list' && (
+      <>
       {/* 搜索 + 热门企业 */}
       <Card>
         <CardContent className="space-y-4 pt-5">
@@ -488,6 +682,8 @@ export default function CompaniesPage({
       <p className="text-center text-xs text-slate-400">
         数据来源：Drugs@FDA · 企业名已归一化合并（去标点与公司后缀），共 {index.length.toLocaleString()} 个企业组
       </p>
+      </>
+      )}
     </div>
   )
 }

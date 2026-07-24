@@ -1136,6 +1136,35 @@ export function loadCnAccess(): Promise<CnAccess> {
   return cnAccessPromise
 }
 
+// ---------- 企业地图（phase 1：名称/城市/国家/官网） ----------
+
+export interface CompaniesMapCompany {
+  name: string
+  city: string
+  country: string
+  website: string
+}
+
+export interface CompaniesMap {
+  generated_at: string
+  scope_note: string
+  stats: { total: number; with_website: number; countries: number }
+  companies: CompaniesMapCompany[]
+}
+
+let companiesMapPromise: Promise<CompaniesMap> | null = null
+
+export function loadCompaniesMap(): Promise<CompaniesMap> {
+  if (!companiesMapPromise) {
+    companiesMapPromise = fetch(`${import.meta.env.BASE_URL}data/companies_map.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`companies_map.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<CompaniesMap>
+      })
+  }
+  return companiesMapPromise
+}
+
 // ---------- 全球可及性 L2：三地批准时滞 ----------
 
 export interface LagBlock {
