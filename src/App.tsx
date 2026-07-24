@@ -69,6 +69,7 @@ export default function App() {
   const [pendingAPI, setPendingAPI] = useState<string | null>(null)
   const [pendingIngredient, setPendingIngredient] = useState<string | null>(null)
   const [pendingAPIName, setPendingAPIName] = useState<string | null>(null)
+  const [pendingCompare, setPendingCompare] = useState<string[] | null>(null)
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(COLLAPSE_KEY) === '1' } catch { return false }
   })
@@ -120,6 +121,13 @@ export default function App() {
   /** 跨页跳转：在生命周期页检索并展开某个成分 */
   const openLifecycleIngredient = (ingredient: string) => {
     setPendingIngredient(ingredient)
+    setPage('lifecycle')
+    setView({ kind: 'list' })
+  }
+
+  /** 跨页跳转：生命周期页对比模式（成分透视页"送去对比"，≤4 个成分） */
+  const openLifecycleCompare = (ingredients: string[]) => {
+    setPendingCompare(ingredients.slice(0, 4))
     setPage('lifecycle')
     setView({ kind: 'list' })
   }
@@ -265,6 +273,7 @@ export default function App() {
               onSelectDrug={(appNo) => openDetail(appNo, 'api')}
               onSelectDisease={openDisease}
               onSelectCompany={openCompany}
+              onCompare={openLifecycleCompare}
             />
           ) : page === 'feed' ? (
             <FeedPage />
@@ -279,6 +288,8 @@ export default function App() {
             <LifecyclePage
             pendingIngredient={pendingIngredient}
             onConsumePendingIngredient={() => setPendingIngredient(null)}
+            pendingCompare={pendingCompare}
+            onConsumePendingCompare={() => setPendingCompare(null)}
             onSelectDisease={openDisease}
             onSelectCompany={openCompany}
             onOpenEntityPage={openAPIByName}

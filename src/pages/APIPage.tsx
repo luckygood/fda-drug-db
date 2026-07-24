@@ -1,15 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Search, Pill, Stethoscope, FlaskConical, TrendingUp, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Loader2, Search, Pill, Stethoscope, FlaskConical, TrendingUp, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, Download, GitCompareArrows } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
 import {
   loadAPIIndex, loadAPIShard, apiShardLetter,
+  loadLifecycleIndex, loadReportMetrics, loadGlobalAccess, loadEntityMap, loadCtIngredient, loadDiseaseIndex,
   type APIIndexEntry, type APIDetail,
+  type LifecycleRecord, type ReportMetrics, type GlobalAccessRecord, type EntityMap, type CtIngredientIndex,
 } from '@/lib/data'
 import { StatusBadge, TypeBadge } from '@/components/StatusBadge'
 import IngredientEntityPanel from '@/components/IngredientEntityPanel'
 import IngredientReport from '@/components/IngredientReport'
+import APIFacetPanel, { type FacetCounts } from '@/components/APIFacetPanel'
+import {
+  EMPTY_FACETS, PRESETS, isFacetActive, presetMatches, filterIngredientNames,
+  facetsToHash, facetsFromHash, inYearBucket, inCliff, erosionStageOf,
+  STAGE_OPTIONS, YEAR_OPTIONS, EROSION_OPTIONS, CLIFF_OPTIONS, MOLTYPE_OPTIONS,
+  type FacetState, type FacetContext,
+} from '@/lib/apiFacets'
+import { cn } from '@/lib/utils'
 
 const COLORS: Record<string, string> = {
   pioneer: '#2563eb',
@@ -51,9 +61,11 @@ interface APIPageProps {
   /** 跨页传入的成分名（生命周期页"查看完整实体页"），按 api_name 定位 */
   pendingAPIName?: string | null
   onConsumePendingAPIName?: () => void
+  /** 送去对比：跳转生命周期页对比模式（≤4 个成分） */
+  onCompare?: (ingredients: string[]) => void
 }
 
-export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany, pendingAPI, onConsumePendingAPI, pendingAPIName, onConsumePendingAPIName }: APIPageProps) {
+export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany, pendingAPI, onConsumePendingAPI, pendingAPIName, onConsumePendingAPIName, onCompare }: APIPageProps) {
   const [index, setIndex] = useState<APIIndexEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -76,6 +88,82 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
 
   // 快速筛选
   const [quickFilter, setQuickFilter] = useState<'all' | 'single_source' | 'no_generic' | 'high_competition' | 'biologic'>('all')
+
+  // 多面筛选（方案A）+ 场景预设（方案B）
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [facets, setFacets] = useState<FacetState>(() => facetsFromHash(window.location.hash) ?? EMPTY_FACETS)
+  const [lcRecords, setLcRecords] = useState<Record<string, LifecycleRecord> | null>(null)
+  const [metrics, setMetrics] = useState<ReportMetrics | null>(null)
+  const [globalAccess, setGlobalAccess] = useState<Record<string, GlobalAccessRecord> | null>(null)
+  const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
+  const [ctIndex, setCtIndex] = useState<CtIngredientIndex | null>(null)
+  const [diseaseNames, setDiseaseNames] = useState<Record<string, string>>({})
+  const [checked, setChecked] = useState<string[]>([])
+
+  useEffect(() => {
+    loadLifecycleIndex().then((d) => setLcRecords(d.records)).catch(() => setLcRecords(null))
+    loadReportMetrics().then(setMetrics).catch(() => setMetrics(null))
+    loadGlobalAccess().then((d) => setGlobalAccess(d.records)).catch(() => setGlobalAccess(null))
+    loadEntityMap().then(setEntityMap).catch(() => setEntityMap(null))
+    loadCtIngredient().then(setCtIndex).catch(() => setCtIndex(null))
+    loadDiseaseIndex()
+      .then((d) => setDiseaseNames(Object.fromEntries(d.diseases.map((x) => [x.slug, x.name_zh]))))
+      .catch(() => setDiseaseNames({}))
+  }, [])
+
+  const facetCtx: FacetContext | null = useMemo(
+    () => (lcRecords ? { records: lcRecords, metrics, globalAccess, entityMap, ct: ctIndex } : null),
+    [lcRecords, metrics, globalAccess, entityMap, ctIndex],
+  )
+
+  // URL hash 持久化（可分享视图）
+  useEffect(() => {
+    const h = facetsToHash(facets)
+    if (h !== window.location.hash) {
+      window.history.replaceState(null, '', h || window.location.pathname + window.location.search)
+    }
+  }, [facets])
+
+  // 命中集合（hideWithdrawn 默认生效）
+  const matchedNames = useMemo(
+    () => (facetCtx ? filterIngredientNames(facetCtx, facets) : null),
+    [facetCtx, facets],
+  )
+
+  // 全集计数徽标（受 hideWithdrawn 约束）
+  const facetCounts: FacetCounts | null = useMemo(() => {
+    if (!facetCtx) return null
+    const c: FacetCounts = {
+      stages: {}, yearBuckets: {}, applType: {}, molTypes: {}, erosion: {},
+      cliff: {}, shortage: {}, global: {}, evidence: {}, withdrawnHidden: 0,
+    }
+    for (const [name, rec] of Object.entries(facetCtx.records)) {
+      if (rec.withdrawn) {
+        c.withdrawnHidden += 1
+        if (facets.hideWithdrawn) continue
+      }
+      for (const s of STAGE_OPTIONS) if (rec.stage === s) c.stages[s] = (c.stages[s] ?? 0) + 1
+      for (const b of YEAR_OPTIONS) if (inYearBucket(rec, b)) c.yearBuckets[b] = (c.yearBuckets[b] ?? 0) + 1
+      if ((rec.n_nda ?? 0) > 0) c.applType.originator = (c.applType.originator ?? 0) + 1
+      if ((rec.n_anda ?? 0) > 0) c.applType.generic = (c.applType.generic ?? 0) + 1
+      const mt = metrics?.ingredients[name]?.mol_type
+      for (const t of MOLTYPE_OPTIONS) if (mt === t) c.molTypes[t] = (c.molTypes[t] ?? 0) + 1
+      const er = erosionStageOf(facetCtx, name)
+      for (const e of EROSION_OPTIONS) if (er === e) c.erosion[e] = (c.erosion[e] ?? 0) + 1
+      for (const b of CLIFF_OPTIONS) if (inCliff(rec, b)) c.cliff[b] = (c.cliff[b] ?? 0) + 1
+      if (rec.shortage_risk === 'high') c.shortage.high = (c.shortage.high ?? 0) + 1
+      if (rec.shortage_risk === 'medium') c.shortage.medium = (c.shortage.medium ?? 0) + 1
+      const g = globalAccess?.[name]
+      if (g) {
+        if (g.ema_status === 'authorised') c.global.ema = (c.global.ema ?? 0) + 1
+        if (g.pmda_status === 'approved') c.global.pmda = (c.global.pmda ?? 0) + 1
+        if (g.ema_status !== 'authorised' && g.pmda_status !== 'approved') c.global.us_only = (c.global.us_only ?? 0) + 1
+      }
+      if (metrics?.ingredients[name]?.evidence) c.evidence.pubmed = (c.evidence.pubmed ?? 0) + 1
+      if ((ctIndex?.ingredients[name]?.total ?? 0) > 0) c.evidence.ct = (c.evidence.ct ?? 0) + 1
+    }
+    return c
+  }, [facetCtx, facets.hideWithdrawn, metrics, globalAccess, ctIndex])
 
   useEffect(() => {
     loadAPIIndex()
@@ -128,6 +216,10 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
     if (activeStage) {
       list = list.filter((a) => a.lifecycle_stage === activeStage)
     }
+    // 多面筛选（生命周期宇宙匹配；ctx 未加载前不过滤）
+    if (matchedNames) {
+      list = list.filter((a) => matchedNames.has(a.api_name.toUpperCase()))
+    }
     // 快速筛选
     switch (quickFilter) {
       case 'single_source':
@@ -163,7 +255,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
       return sortDesc ? -cmp : cmp
     })
     return list
-  }, [index, activeLetter, activeStage, sortField, sortDesc, quickFilter])
+  }, [index, activeLetter, activeStage, sortField, sortDesc, quickFilter, matchedNames])
 
   // 分页
   const totalPages = Math.ceil(sortedList.length / PAGE_SIZE)
@@ -175,7 +267,7 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
   // 切换筛选或排序条件时重置页码
   useEffect(() => {
     setPage(0)
-  }, [activeLetter, activeStage, sortField, sortDesc, quickFilter])
+  }, [activeLetter, activeStage, sortField, sortDesc, quickFilter, facets])
 
   // 消费跨页传入的 API 选择（需等索引加载完成）
   useEffect(() => {
@@ -231,6 +323,44 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
     setSortField('products')
     setSortDesc(true)
     setQuickFilter('all')
+    setFacets(EMPTY_FACETS)
+    setChecked([])
+  }
+
+  // 勾选对比（≤4）
+  const toggleChecked = (name: string) => {
+    setChecked((prev) => {
+      if (prev.includes(name)) return prev.filter((x) => x !== name)
+      if (prev.length >= 4) return prev
+      return [...prev, name]
+    })
+  }
+
+  // 导出筛选结果 CSV（UTF-8 BOM，Excel 兼容）
+  const exportCsv = () => {
+    const header = ['成分', '生命周期阶段', '首获批', '原研企业', 'ANDA 数', '分子类型', '全球可及']
+    const rows = sortedList.map((a) => {
+      const rec = lcRecords?.[a.api_name.toUpperCase()]
+      const mt = metrics?.ingredients[a.api_name.toUpperCase()]?.mol_type ?? ''
+      const g = globalAccess?.[a.api_name.toUpperCase()]
+      const glob = !g ? '专题外'
+        : [g.ema_status === 'authorised' ? 'EMA' : null, g.pmda_status === 'approved' ? 'PMDA' : null]
+            .filter(Boolean).join('+') || '仅美国'
+      const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
+      return [
+        a.api_name, rec?.stage ?? '', rec?.first_approval ?? a.first_approval ?? '',
+        rec?.originator ?? a.originator ?? '', String(rec?.n_anda ?? a.stats.anda ?? ''),
+        mt, glob,
+      ].map(esc).join(',')
+    })
+    const csv = '﻿' + [header.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `api筛选结果_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   const toggleSort = (field: typeof sortField) => {
@@ -413,8 +543,55 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
         </CardContent>
       </Card>
 
-      {/* 浏览模式：分页列表 */}
+      {/* 浏览模式：场景预设 + 筛选面板 + 分页列表 */}
       {viewMode === 'browse' && (
+        <>
+          {/* 场景预设 chips（方案B） */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-400">场景预设：</span>
+            {PRESETS.map((p) => {
+              const active = presetMatches(facets, p)
+              return (
+                <button
+                  key={p.key}
+                  title={p.tip}
+                  onClick={() => setFacets(active ? EMPTY_FACETS : { ...EMPTY_FACETS, ...p.apply })}
+                  className={cn(
+                    'rounded-full border px-3 py-1.5 text-xs transition-colors',
+                    active
+                      ? 'border-blue-500 bg-blue-600 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700',
+                  )}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+            <button
+              onClick={() => setPanelOpen((v) => !v)}
+              className={cn(
+                'ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors',
+                panelOpen || isFacetActive(facets)
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:text-slate-800',
+              )}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              筛选面板{isFacetActive(facets) && ' · 已生效'}
+            </button>
+          </div>
+
+          <div className="flex items-start gap-4">
+            {panelOpen && (
+              <APIFacetPanel
+                facets={facets}
+                counts={facetCounts}
+                diseaseNames={diseaseNames}
+                onChange={setFacets}
+                onClear={() => setFacets(EMPTY_FACETS)}
+              />
+            )}
+            <div className="min-w-0 flex-1">
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -433,9 +610,34 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
                   </span>
                 )}
               </CardTitle>
-              <span className="text-xs text-slate-400">
-                共 {sortedList.length.toLocaleString()} 个 · 第 {page + 1}/{Math.max(1, totalPages)} 页
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-slate-400">
+                  命中 {sortedList.length.toLocaleString()} / {(lcRecords ? Object.keys(lcRecords).length : index?.length ?? 0).toLocaleString()}
+                  {' '}· 第 {page + 1}/{Math.max(1, totalPages)} 页
+                </span>
+                {isFacetActive(facets) && (
+                  <button onClick={() => setFacets(EMPTY_FACETS)} className="text-xs text-blue-600 hover:underline">
+                    清空筛选
+                  </button>
+                )}
+                <button
+                  onClick={exportCsv}
+                  disabled={sortedList.length === 0}
+                  className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <Download className="h-3 w-3" />
+                  导出 CSV
+                </button>
+                <button
+                  onClick={() => onCompare?.(checked)}
+                  disabled={checked.length < 2 || !onCompare}
+                  title={checked.length < 2 ? '勾选 2-4 个成分后对比' : `对比 ${checked.length} 个成分`}
+                  className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 disabled:opacity-40"
+                >
+                  <GitCompareArrows className="h-3 w-3" />
+                  送去对比{checked.length > 0 && `（${checked.length}）`}
+                </button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -443,6 +645,16 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
               <div className="flex flex-col items-center gap-2 py-16 text-slate-400">
                 <FlaskConical className="h-10 w-10" />
                 <p className="text-sm">暂无符合条件的 API</p>
+                {isFacetActive(facets) && (
+                  <p className="text-xs text-slate-400">
+                    放宽建议：
+                    {facets.cliff.length > 0 && '「专利悬崖」条件较严，可先撤除；'}
+                    {facets.global.length > 0 && '「全球可及」仅限 2020+ 专题成分；'}
+                    {facets.diseases.length > 0 && '「治疗领域」仅覆盖 104 个疾病关联成分；'}
+                    {facets.evidence.length > 0 && '「证据」覆盖有限（PubMed 仅引入期、CT 仅专题成分）；'}
+                    {facets.stages.length === 0 && facets.yearBuckets.length === 0 && '尝试减少同时生效的筛选项。'}
+                  </p>
+                )}
                 <button onClick={clearFilters} className="text-xs text-blue-600 hover:underline">
                   清除筛选
                 </button>
@@ -506,6 +718,9 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
                   <table className="w-full border-collapse">
                     <thead className="sticky top-0 bg-slate-50">
                       <tr>
+                        <th className="w-8 px-2 py-2" title="勾选 2-4 个成分送去对比">
+                          <GitCompareArrows className="mx-auto h-3.5 w-3.5 text-slate-300" />
+                        </th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">
                           <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-blue-600">
                             活性成分 <SortIcon field="name" />
@@ -532,6 +747,15 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
                           onClick={() => selectAPI(a)}
                           className="cursor-pointer border-t border-slate-100 hover:bg-blue-50/50"
                         >
+                          <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={checked.includes(a.api_name)}
+                              onChange={() => toggleChecked(a.api_name)}
+                              disabled={!checked.includes(a.api_name) && checked.length >= 4}
+                              className="h-3.5 w-3.5 rounded border-slate-300"
+                            />
+                          </td>
                           <td className="px-3 py-2 text-sm font-medium text-blue-700">{a.api_name}</td>
                           <td className="px-3 py-2 text-sm text-slate-600">{a.stats.total}</td>
                           <td className="px-3 py-2">
@@ -605,6 +829,9 @@ export default function APIPage({ onSelectDrug, onSelectDisease, onSelectCompany
             )}
           </CardContent>
         </Card>
+            </div>
+          </div>
+        </>
       )}
 
       {loadingDetail && (

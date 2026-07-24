@@ -1284,6 +1284,7 @@ export interface IngredientMetrics {
   exclusivity_pct?: number | null
   evidence?: { clinical_count: number; years_on_market: number; per_year: number; bucket: '高' | '中' | '低' }
   global_score?: number
+  mol_type?: string
 }
 
 export interface ReportMetrics {

@@ -155,6 +155,9 @@ interface LifecyclePageProps {
   /** 跨页传入的成分名（疾病页/企业页成分 chips），待本页消费：切到对应阶段并展开 */
   pendingIngredient?: string | null
   onConsumePendingIngredient?: () => void
+  /** 跨页传入的对比清单（成分透视页"送去对比"），待本页消费：直接进入对比模式 */
+  pendingCompare?: string[] | null
+  onConsumePendingCompare?: () => void
   /** 点击疾病 chip 跳转疾病视角页 */
   onSelectDisease?: (slug: string) => void
   /** 点击企业 chip 跳转企业画像页 */
@@ -166,6 +169,8 @@ interface LifecyclePageProps {
 export default function LifecyclePage({
   pendingIngredient,
   onConsumePendingIngredient,
+  pendingCompare,
+  onConsumePendingCompare,
   onSelectDisease,
   onSelectCompany,
   onOpenEntityPage,
@@ -231,6 +236,20 @@ export default function LifecyclePage({
     onConsumePendingIngredient?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingIngredient, data])
+
+  // 消费跨页传入的对比清单：直接进入对比模式并展开对比视图
+  useEffect(() => {
+    if (!pendingCompare || !data) return
+    const valid = pendingCompare.map((n) => n.toUpperCase()).filter((n) => data.records[n])
+    if (valid.length > 0) {
+      setCompareMode(true)
+      setSelected(valid.slice(0, 4))
+      setComparing(valid.length >= 2)
+      setExpanded(null)
+    }
+    onConsumePendingCompare?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCompare, data])
 
   // 仅在引入期视图加载 PubMed 证据（约 72 KB，带缓存）
   useEffect(() => {
