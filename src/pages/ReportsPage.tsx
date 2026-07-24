@@ -15,14 +15,7 @@ interface ReportCardSpec {
   chapters: string[]
 }
 
-const UPCOMING_ENTITY_REPORTS: ReportCardSpec[] = [
-  {
-    icon: Building2,
-    title: '《企业管线画像报告》',
-    desc: '以企业为主线的获批产品与管线成分盘点',
-    chapters: ['获批产品', '治疗领域', '管线成分', '近年活动'],
-  },
-]
+const UPCOMING_ENTITY_REPORTS: ReportCardSpec[] = []
 
 const UPCOMING_TOPIC_REPORTS: ReportCardSpec[] = []
 
@@ -54,7 +47,7 @@ function UpcomingCard({ spec }: { spec: ReportCardSpec }) {
   )
 }
 
-export default function ReportsPage({ onGoAPI, onGoFeed, onSelectIngredient, onGoDiseases }: {
+export default function ReportsPage({ onGoAPI, onGoFeed, onSelectIngredient, onGoDiseases, onGoCompanies }: {
   /** 跳转成分透视 tab（报告 B 的生成入口） */
   onGoAPI: () => void
   /** 跳转研发情报 tab（周报详情） */
@@ -63,6 +56,8 @@ export default function ReportsPage({ onGoAPI, onGoFeed, onSelectIngredient, onG
   onSelectIngredient: (ing: string) => void
   /** 跳转疾病视角 tab（报告 A 的生成入口） */
   onGoDiseases: () => void
+  /** 跳转企业画像 tab（报告 D 的生成入口） */
+  onGoCompanies: () => void
 }) {
   const [reports, setReports] = useState<WeeklyReport[] | null>(null)
   const [reportsError, setReportsError] = useState<string | null>(null)
@@ -128,6 +123,35 @@ export default function ReportsPage({ onGoAPI, onGoFeed, onSelectIngredient, onG
           </Card>
 
           {UPCOMING_ENTITY_REPORTS.map((spec) => <UpcomingCard key={spec.title} spec={spec} />)}
+
+          {/* 报告 D：已上线 */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-blue-600" />
+                <p className="font-semibold text-slate-900">《企业管线画像报告》</p>
+                <Badge className="ml-auto bg-blue-600 font-normal">已上线</Badge>
+              </div>
+              <p className="mt-2 text-sm text-slate-500">
+                任一企业的管线概要（原研 / 仿制角色区分）、成分表、治疗领域、全球四地可及性、竞争位置与近期动态，单栏叙事文档，支持浏览器导出 PDF。
+              </p>
+              <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-0.5">
+                {['管线概要', '管线成分表', '治疗领域', '全球可及', '竞争位置', '近期动态'].map((c) => (
+                  <li key={c} className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <span className="h-1 w-1 rounded-full bg-blue-300" />
+                    {c}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={onGoCompanies}
+                className="mt-4 flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                去选择企业
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </CardContent>
+          </Card>
 
           {/* 报告 A：已上线 */}
           <Card className="border-blue-200 bg-blue-50/30">

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Loader2, Building2, Search, Award, Pill, Stethoscope, TrendingUp, FlaskConical,
+  Loader2, Building2, Search, Award, Pill, Stethoscope, TrendingUp, FlaskConical, FileText,
 } from 'lucide-react'
 import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
+import CompanyReport from '@/components/CompanyReport'
 import {
   loadCompanyIndex, loadCompanyShard, companyShardLetter, loadEntityMap,
   type CompanyIndexEntry, type CompanyDetail, type EntityMap,
@@ -76,6 +77,7 @@ export default function CompaniesPage({
   const [query, setQuery] = useState('')
   const [showSugg, setShowSugg] = useState(false)
   const [detail, setDetail] = useState<CompanyDetail | null>(null)
+  const [reportMode, setReportMode] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -124,6 +126,7 @@ export default function CompaniesPage({
   const selectCompany = (entry: CompanyIndexEntry) => {
     setShowSugg(false)
     setQuery(entry.name_zh ? `${entry.name_zh} · ${entry.name}` : entry.name)
+    setReportMode(false) // 切换企业时自动退出报告视图
     setLoadingDetail(true)
     setDetailError(null)
     loadCompanyShard(companyShardLetter(entry.slug))
@@ -252,7 +255,15 @@ export default function CompaniesPage({
         </div>
       )}
 
-      {!loadingDetail && detail && (
+      {!loadingDetail && detail && reportMode && (
+        <CompanyReport
+          detail={detail}
+          onBack={() => setReportMode(false)}
+          onSelectIngredient={onSelectIngredient}
+        />
+      )}
+
+      {!loadingDetail && detail && !reportMode && (
         <>
           {/* 头部档案 */}
           <Card>
@@ -265,8 +276,17 @@ export default function CompaniesPage({
                     {detail.name}
                   </span>
                 </CardTitle>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                  {compositionLine(detail)}
+                <span className="flex items-center gap-2">
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                    {compositionLine(detail)}
+                  </span>
+                  <button
+                    onClick={() => setReportMode(true)}
+                    className="no-print flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                  >
+                    <FileText className="h-4 w-4" />
+                    报告视图
+                  </button>
                 </span>
               </div>
               {detail.variants.length > 1 && (
