@@ -134,19 +134,26 @@ top = sorted(countries.items(), key=lambda x: -x[1])[:15]
 out = {
     "generated_at": str(date.today()),
     "method_version": "1.0",
-    "scope_note": "企业地图一期：仅名称/城市/国家/官网四字段。BIO-Europe 2025 参会快照 + PharmaGO 中国申报药品库·单抗(2026-03)。city 对 BIO 为州/省、对 PharmaGO 为中国城市，口径最细可用值。",
+    "scope_note": "企业地图一期：名称/城市/国家/官网四字段。city 为最细可用地区粒度（州/省/城市）。",
     "stats": {
         "total": len(records),
-        "bio_rows": n_bio,
-        "pharmago_rows": n_pg_rows,
-        "merged_multi_source": both,
         "with_website": with_site,
         "countries": len(countries),
         "top_countries": top,
     },
-    "companies": records,
+    "companies": [{k: r[k] for k in ("name", "city", "country", "website")} for r in records],
 }
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1))
+
+# 内部溯源版（不公开，保留 sources 供后续数据治理）
+priv = dict(out)
+priv["companies"] = records
+priv["stats"]["merged_multi_source"] = both
+priv["stats"]["bio_rows"] = n_bio
+priv["stats"]["pharmago_rows"] = n_pg_rows
+(ROOT / "scripts" / "snapshots").mkdir(exist_ok=True)
+(ROOT / "scripts" / "snapshots" / f"companies_map-internal-{date.today():%Y%m%d}.json").write_text(
+    json.dumps(priv, ensure_ascii=False))
 print(f"total={len(records)} bio={n_bio} pg_rows={n_pg_rows} merged={both} with_site={with_site} countries={len(countries)}")
 print("top:", top[:10])
