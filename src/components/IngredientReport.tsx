@@ -3,10 +3,10 @@ import { ChevronLeft, Loader2, Printer } from 'lucide-react'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import {
   loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadGlobalAccess,
-  loadLabelSummary, loadReportMetrics, loadCtIngredient,
+  loadLabelSummary, loadReportMetrics, loadCtIngredient, loadLabelSafety,
   type LifecycleRecord, type EntityMap, type IngredientPubMedIndex,
   type GlobalAccessRecord, type APIProduct,
-  type LabelSummaryEntry, type IngredientMetrics, type CtDiseaseEntry,
+  type LabelSummaryEntry, type IngredientMetrics, type CtDiseaseEntry, type LabelSafetyEntry,
 } from '@/lib/data'
 import { ingredientInsights } from '@/lib/insights'
 import { CtTrialList } from '@/components/CtTrials'
@@ -99,6 +99,7 @@ export default function IngredientReport({ apiName, products, onBack }: {
   const [labelCard, setLabelCard] = useState<LabelSummaryEntry | null>(null)
   const [ingMetrics, setIngMetrics] = useState<IngredientMetrics | null>(null)
   const [ct, setCt] = useState<CtDiseaseEntry | null>(null)
+  const [bw, setBw] = useState<LabelSafetyEntry | null>(null)
   const [generatedAt, setGeneratedAt] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -125,6 +126,9 @@ export default function IngredientReport({ apiName, products, onBack }: {
       loadCtIngredient()
         .then((d) => setCt(d.ingredients[apiName.toUpperCase()] ?? null))
         .catch(() => setCt(null)),
+      loadLabelSafety()
+        .then((d) => setBw(d.ingredients[apiName.toUpperCase()] ?? null))
+        .catch(() => setBw(null)),
     ]).finally(() => setLoading(false))
   }, [apiName])
 
@@ -334,8 +338,24 @@ export default function IngredientReport({ apiName, products, onBack }: {
 
       {/* 五、说明书要点 */}
       <Chapter title="五、说明书要点（FDA 标签）">
+        {/* 当前有效标签黑框警告：专用警示区置顶（openFDA 现行标签，附修订日期） */}
+        {bw?.boxed_warning && (
+          <div className="mb-3 rounded-md border-2 border-red-900 bg-red-50 px-4 py-3">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-red-900">
+              ⚫ 黑框警告（BOXED WARNING）
+              {bw.label_effective_date && (
+                <span className="text-xs font-normal text-red-700">现行标签修订于 {bw.label_effective_date}</span>
+              )}
+            </p>
+            {bw.bw_excerpt && (
+              <p className="mt-1 text-xs leading-relaxed text-red-800">{bw.bw_excerpt}…</p>
+            )}
+          </div>
+        )}
         {!labelCard ? (
-          <p className="text-sm text-slate-400">该成分暂未生成说明书摘要卡（当前成分级覆盖率约 46%，优先覆盖近年新分子）。</p>
+          !bw?.boxed_warning && (
+            <p className="text-sm text-slate-400">该成分暂未生成说明书摘要卡（当前成分级覆盖率约 46%，优先覆盖近年新分子）。</p>
+          )
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-slate-400">

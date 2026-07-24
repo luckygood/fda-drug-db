@@ -6,8 +6,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import {
-  loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadSponsorMap, loadGlobalAccess, loadCtIngredient, resolveCompanySlug,
-  type LifecycleRecord, type EntityMap, type IngredientPubMedIndex, type APIProduct, type GlobalAccessRecord, type CtDiseaseEntry,
+  loadLifecycleIndex, loadEntityMap, loadDiseaseIndex, loadIngredientPubMed, loadSponsorMap, loadGlobalAccess, loadCtIngredient, loadLabelSafety, resolveCompanySlug,
+  type LifecycleRecord, type EntityMap, type IngredientPubMedIndex, type APIProduct, type GlobalAccessRecord, type CtDiseaseEntry, type LabelSafetyEntry,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -98,6 +98,7 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
   const [sponsorMap, setSponsorMap] = useState<Record<string, string> | null>(null)
   const [globalRec, setGlobalRec] = useState<GlobalAccessRecord | null>(null)
   const [ct, setCt] = useState<CtDiseaseEntry | null>(null)
+  const [bw, setBw] = useState<LabelSafetyEntry | null>(null)
 
   useEffect(() => {
     loadLifecycleIndex()
@@ -115,6 +116,9 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
     loadCtIngredient()
       .then((d) => setCt(d.ingredients[apiName.toUpperCase()] ?? null))
       .catch(() => setCt(null))
+    loadLabelSafety()
+      .then((d) => setBw(d.ingredients[apiName.toUpperCase()] ?? null))
+      .catch(() => setBw(null))
   }, [apiName])
 
   const links = entityMap?.ingredients[apiName.toUpperCase()]
@@ -148,6 +152,14 @@ export default function IngredientEntityPanel({ apiName, products, onSelectDisea
             </span>
             {rec.withdrawn && <span className="rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-600">已撤市</span>}
             {risk && <span className={cn('rounded px-2 py-0.5 text-xs', risk.cls)}>{risk.text}</span>}
+            {bw?.boxed_warning && (
+              <span
+                className="rounded border border-red-800 bg-red-900 px-2 py-0.5 text-xs font-semibold text-white"
+                title={bw.bw_excerpt ?? 'FDA 说明书含黑框警告'}
+              >
+                ⚫ 黑框警告
+              </span>
+            )}
             {onOpenReport && (
               <button
                 onClick={onOpenReport}

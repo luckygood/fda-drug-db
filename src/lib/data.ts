@@ -1365,3 +1365,33 @@ export function loadCtIngredient(): Promise<CtIngredientIndex> {
   }
   return ctIngredientPromise
 }
+
+// ---------- 说明书安全信号（黑框警告/标签修订日期） ----------
+
+export interface LabelSafetyEntry {
+  boxed_warning: boolean
+  bw_excerpt: string | null
+  warnings_present: boolean
+  label_effective_date: string | null
+  source: 'openfda_label' | 'label_summary_cards'
+  error?: boolean
+}
+
+export interface LabelSafetyIndex {
+  generated_at: string
+  scope: string
+  ingredients: Record<string, LabelSafetyEntry>
+}
+
+let labelSafetyPromise: Promise<LabelSafetyIndex> | null = null
+
+export function loadLabelSafety(): Promise<LabelSafetyIndex> {
+  if (!labelSafetyPromise) {
+    labelSafetyPromise = fetch(`${import.meta.env.BASE_URL}data/label_safety.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`label_safety.json 加载失败: HTTP ${r.status}`)
+        return r.json() as Promise<LabelSafetyIndex>
+      })
+  }
+  return labelSafetyPromise
+}

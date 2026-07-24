@@ -253,7 +253,10 @@ export default function App() {
               onSelectDrug={(appNo) => openDetail(appNo, 'china')}
             />
           ) : page === 'safety' ? (
-            <SafetyMarketPage onSelectDrug={(appNo) => openDetail(appNo, 'safety')} />
+            <SafetyMarketPage
+              onSelectDrug={(appNo) => openDetail(appNo, 'safety')}
+              onSelectIngredient={openAPIByName}
+            />
           ) : page === 'patent' ? (
             <PatentSupplyPage onSelectDrug={(appNo) => openDetail(appNo, 'patent')} />
           ) : page === 'diseases' ? (

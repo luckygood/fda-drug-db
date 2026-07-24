@@ -4,8 +4,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import PubMedEvidence from '@/components/PubMedEvidence'
 import IngredientCompare from '@/components/IngredientCompare'
 import {
-  loadLifecycleIndex, loadIngredientPubMed, loadEntityMap, loadDiseaseIndex, loadGlobalAccess,
-  type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex, type EntityMap, type GlobalAccessRecord,
+  loadLifecycleIndex, loadIngredientPubMed, loadEntityMap, loadDiseaseIndex, loadGlobalAccess, loadLabelSafety,
+  type LifecycleIndex, type LifecycleRecord, type IngredientPubMedIndex, type EntityMap, type GlobalAccessRecord, type LabelSafetyIndex,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -181,6 +181,7 @@ export default function LifecyclePage({
   const [entityMap, setEntityMap] = useState<EntityMap | null>(null)
   const [diseaseNames, setDiseaseNames] = useState<Record<string, string>>({})
   const [globalAccess, setGlobalAccess] = useState<Record<string, GlobalAccessRecord> | null>(null)
+  const [labelSafety, setLabelSafety] = useState<LabelSafetyIndex | null>(null)
   const [stage, setStage] = useState<StageKey>('引入期')
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('first_approval')
@@ -220,6 +221,7 @@ export default function LifecyclePage({
     loadGlobalAccess()
       .then((d) => setGlobalAccess(d.records))
       .catch(() => setGlobalAccess(null))
+    loadLabelSafety().then(setLabelSafety).catch(() => setLabelSafety(null))
   }, [])
 
   // 消费跨页传入的成分：切到其所在阶段、检索并展开
@@ -464,10 +466,13 @@ export default function LifecyclePage({
                               </span>
                             )}
                           </div>
-                          {(r.withdrawn || risk) && (
+                          {(r.withdrawn || risk || labelSafety?.ingredients[r.ingredient]?.boxed_warning) && (
                             <div className="mt-1 flex gap-1">
                               {r.withdrawn && <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">已撤市</span>}
                               {risk && <span className={cn('rounded px-1.5 py-0.5 text-xs', risk.cls)}>{risk.text}</span>}
+                              {labelSafety?.ingredients[r.ingredient]?.boxed_warning && (
+                                <span className="rounded border border-red-800 bg-red-900 px-1.5 py-0.5 text-xs font-medium text-white">⚫黑框</span>
+                              )}
                             </div>
                           )}
                         </td>

@@ -5,6 +5,7 @@ import {
 import type { EChartsOption } from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import EChart from '@/components/EChart'
+import AlertCenter from '@/components/AlertCenter'
 import {
   loadSafetyBoxed, loadWithdrawn, loadGenericLag, loadBiologics,
   type SafetyBoxed, type Withdrawn, type GenericLag, type Biologics,
@@ -56,7 +57,11 @@ function SectionLoading({ text }: { text: string }) {
   )
 }
 
-export default function SafetyMarketPage({ onSelectDrug }: { onSelectDrug: (applicationNumber: string) => void }) {
+export default function SafetyMarketPage({ onSelectDrug, onSelectIngredient }: {
+  onSelectDrug: (applicationNumber: string) => void
+  /** 点击榜单成分跳转成分透视详情 */
+  onSelectIngredient?: (ingredient: string) => void
+}) {
   const [safety, setSafety] = useState<SafetyBoxed | null>(null)
   const [withdrawn, setWithdrawn] = useState<Withdrawn | null>(null)
   const [lag, setLag] = useState<GenericLag | null>(null)
@@ -261,6 +266,9 @@ export default function SafetyMarketPage({ onSelectDrug }: { onSelectDrug: (appl
 
   return (
     <div className="space-y-6">
+      {/* ===== 0. 预警中心（四榜单） ===== */}
+      <AlertCenter onSelectIngredient={onSelectIngredient} />
+
       {/* ===== 1. 安全性图谱 · 黑框警告 ===== */}
       <Card>
         <CardHeader>
